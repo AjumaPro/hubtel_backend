@@ -1,0 +1,583 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GLICO Capital - Admin Dashboard</title>
+    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="d-flex justify-between align-center">
+            <div>
+                <h1><i class="fas fa-chart-line"></i> GLICO Capital Dashboard</h1>
+                <div class="subtitle">Admin Panel & Analytics</div>
+            </div>
+            <div class="d-flex gap-2">
+                <span class="d-flex align-center gap-1">
+                    <i class="fas fa-clock"></i>
+                    <span id="current-time"></span>
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="dashboard-nav">
+        <ul class="nav-tabs">
+            <li class="active">
+                <a href="#overview">Overview</a>
+            </li>
+            <li>
+                <a href="#payments">Payments</a>
+            </li>
+            <li>
+                <a href="#kyc">KYC Submissions</a>
+            </li>
+            <li>
+                <a href="#analytics">Analytics</a>
+            </li>
+            <li>
+                <a href="#settings">Settings</a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="dashboard-content">
+        <!-- Overview Tab -->
+        <div id="overview" class="tab-content">
+            <!-- Statistics Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Transactions</h3>
+                    <div class="value" id="stat-total_transactions">{{ stats.total_transactions }}</div>
+                    <div class="change {% if stats.transaction_change < 0 %}negative{% endif %}">
+                        <i class="fas fa-{% if stats.transaction_change >= 0 %}arrow-up{% else %}arrow-down{% endif %}"></i>
+                        {{ stats.today_transactions }} today
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Total Revenue</h3>
+                    <div class="value" id="stat-total_amount">GHS {{ stats.total_amount|floatformat:2 }}</div>
+                    <div class="change">
+                        <i class="fas fa-arrow-up"></i>
+                        GHS {{ stats.today_amount|floatformat:2 }} today
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>KYC Submissions</h3>
+                    <div class="value" id="stat-total_kyc_submissions">{{ stats.total_kyc_submissions }}</div>
+                    <div class="change {% if stats.kyc_change < 0 %}negative{% endif %}">
+                        <i class="fas fa-{% if stats.kyc_change >= 0 %}arrow-up{% else %}arrow-down{% endif %}"></i>
+                        {{ stats.today_kyc_submissions }} today
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Success Rate</h3>
+                    <div class="value" id="stat-success_rate">
+                        {% if stats.total_transactions > 0 %}
+                            {{ stats.total_transactions|floatformat:1 }}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </div>
+                    <div class="change">
+                        <i class="fas fa-check-circle"></i>
+                        All systems operational
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="data-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-history"></i> Recent Activity</h2>
+                    <div class="section-actions">
+                        <button class="btn btn-outline refresh-btn" data-section="recent-activity">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Description</th>
+                                <th>Status</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for activity in stats.recent_activity %}
+                            <tr>
+                                <td>
+                                    <span class="status {% if activity.type == 'payment' %}success{% else %}pending{% endif %}">
+                                        {{ activity.type|upper }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <strong>{{ activity.title }}</strong><br>
+                                    <small>{{ activity.description }}</small>
+                                </td>
+                                <td>
+                                    <span class="status {% if activity.status == 'success' %}success{% elif activity.status == 'pending' %}pending{% else %}failed{% endif %}">
+                                        {{ activity.status }}
+                                    </span>
+                                </td>
+                                <td>{{ activity.time|date:"M d, H:i" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payments Tab -->
+        <div id="payments" class="tab-content" style="display: none;">
+            <div class="data-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-credit-card"></i> Payment Transactions</h2>
+                    <div class="section-actions">
+                        <input type="text" class="form-control search-input" placeholder="Search transactions..." data-table="payments-table" style="width: 200px;">
+                        <button class="btn btn-success export-btn" data-type="payments" data-format="excel">
+                            <i class="fas fa-file-excel"></i> Export Excel
+                        </button>
+                        <button class="btn btn-warning export-btn" data-type="payments" data-format="pdf">
+                            <i class="fas fa-file-pdf"></i> Export PDF
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table id="payments-table" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Reference</th>
+                                <th>Customer</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for payment in recent_payments %}
+                            <tr>
+                                <td><strong>#{{ payment.id }}</strong></td>
+                                <td>{{ payment.customer_name }}</td>
+                                <td>{{ payment.amount }} {{ payment.currency }}</td>
+                                <td>
+                                    <span class="status {% if payment.status == 'completed' %}success{% elif payment.status == 'pending' %}pending{% else %}failed{% endif %}">
+                                        {{ payment.status|title }}
+                                    </span>
+                                </td>
+                                <td>{{ payment.created_at|date:"M d, H:i" }}</td>
+                                <td>
+                                    <button class="btn btn-outline" onclick="viewPayment('{{ payment.id }}')">
+                                        <i class="fas fa-eye"></i> View
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- KYC Tab -->
+        <div id="kyc" class="tab-content" style="display: none;">
+            <div class="data-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-user-check"></i> KYC Submissions</h2>
+                    <div class="section-actions">
+                        <input type="text" class="form-control search-input" placeholder="Search KYC..." data-table="kyc-table" style="width: 200px;">
+                        <button class="btn btn-success export-btn" data-type="kyc" data-format="excel">
+                            <i class="fas fa-file-excel"></i> Export Excel
+                        </button>
+                        <button class="btn btn-warning export-btn" data-type="kyc" data-format="pdf">
+                            <i class="fas fa-file-pdf"></i> Export PDF
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table id="kyc-table" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>User</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Status</th>
+                                <th>Submitted</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for submission in recent_kyc_submissions %}
+                            <tr>
+                                <td><strong>#{{ submission.id }}</strong></td>
+                                <td>{{ submission.user|default:"Anonymous" }}</td>
+                                <td>
+                                    {% if submission.data.firstName and submission.data.lastName %}
+                                        {{ submission.data.firstName }} {{ submission.data.lastName }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td>{{ submission.data.email|default:"N/A" }}</td>
+                                <td>
+                                    <span class="status {% if submission.status == 'SUCCESS' %}success{% elif submission.status == 'PENDING' %}pending{% else %}failed{% endif %}">
+                                        {{ submission.status }}
+                                    </span>
+                                </td>
+                                <td>{{ submission.submitted_at|date:"M d, H:i" }}</td>
+                                <td>
+                                    <button class="btn btn-outline" onclick="viewKYC('{{ submission.id }}')">
+                                        <i class="fas fa-eye"></i> View
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Tab -->
+        <div id="analytics" class="tab-content" style="display: none;">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Payment Status Breakdown</h3>
+                    <div id="payment-chart">
+                        {% for status in stats.payment_status_breakdown %}
+                        <div class="mb-2">
+                            <strong>{{ status.status }}</strong>: {{ status.count }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Daily Trends</h3>
+                    <div class="value">Coming Soon</div>
+                    <div class="change">
+                        <i class="fas fa-chart-line"></i>
+                        Interactive charts
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settings" class="tab-content" style="display: none;">
+            <div class="data-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-cog"></i> System Settings</h2>
+                </div>
+                <div style="padding: 1.5rem;">
+                    <div class="form-group">
+                        <label>API Status</label>
+                        <div class="d-flex gap-2">
+                            <span class="status success">Norbus API: Online</span>
+                            <span class="status success">Hubtel API: Online</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Database Status</label>
+                        <div class="d-flex gap-2">
+                            <span class="status success">SQLite: Connected</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Export Settings</label>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary">
+                                <i class="fas fa-download"></i> Backup Database
+                            </button>
+                            <button class="btn btn-warning">
+                                <i class="fas fa-upload"></i> Restore Database
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Section -->
+        <div id="analytics-section" class="dashboard-section" style="display: none;">
+            <div class="section-header">
+                <h2><i class="fas fa-chart-line"></i> Analytics</h2>
+                <div class="section-controls">
+                    <select id="date-range" class="form-control">
+                        <option value="7">Last 7 days</option>
+                        <option value="30" selected>Last 30 days</option>
+                        <option value="90">Last 90 days</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="refreshAnalytics()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            
+            <div class="analytics-grid">
+                <!-- Payment Trends Chart -->
+                <div class="chart-card">
+                    <h3>Payment Trends</h3>
+                    <canvas id="paymentTrendsChart"></canvas>
+                </div>
+                
+                <!-- KYC Trends Chart -->
+                <div class="chart-card">
+                    <h3>KYC Submission Trends</h3>
+                    <canvas id="kycTrendsChart"></canvas>
+                </div>
+                
+                <!-- Payment Status Distribution -->
+                <div class="chart-card">
+                    <h3>Payment Status Distribution</h3>
+                    <canvas id="paymentStatusChart"></canvas>
+                </div>
+                
+                <!-- KYC Status Distribution -->
+                <div class="chart-card">
+                    <h3>KYC Status Distribution</h3>
+                    <canvas id="kycStatusChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Section -->
+        <div id="settings-section" class="dashboard-section" style="display: none;">
+            <div class="section-header">
+                <h2><i class="fas fa-cog"></i> Settings</h2>
+            </div>
+            
+            <div class="settings-grid">
+                <!-- Dashboard Settings -->
+                <div class="settings-card">
+                    <h3>Dashboard Settings</h3>
+                    <form id="dashboard-settings-form">
+                        <div class="form-group">
+                            <label>Refresh Interval (seconds)</label>
+                            <input type="number" id="refresh-interval" class="form-control" min="10" max="300" value="30">
+                        </div>
+                        <div class="form-group">
+                            <label>Default Date Range (days)</label>
+                            <input type="number" id="date-range-default" class="form-control" min="1" max="365" value="30">
+                        </div>
+                        <div class="form-group">
+                            <label>Theme</label>
+                            <select id="theme-select" class="form-control">
+                                <option value="light">Light</option>
+                                <option value="dark">Dark</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="notifications-enabled" checked>
+                                Enable Notifications
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Save Settings</button>
+                    </form>
+                </div>
+                
+                <!-- Export Settings -->
+                <div class="settings-card">
+                    <h3>Export Settings</h3>
+                    <form id="export-settings-form">
+                        <div class="form-group">
+                            <label>Default Export Format</label>
+                            <select id="export-format" class="form-control">
+                                <option value="excel">Excel</option>
+                                <option value="pdf">PDF</option>
+                                <option value="csv">CSV</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Include Timestamps</label>
+                            <select id="include-timestamps" class="form-control">
+                                <option value="true">Yes</option>
+                                <option value="false">No</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Save Export Settings</button>
+                    </form>
+                </div>
+                
+                <!-- System Information -->
+                <div class="settings-card">
+                    <h3>System Information</h3>
+                    <div id="system-info">
+                        <div class="info-item">
+                            <strong>Django Version:</strong>
+                            <span id="django-version">Loading...</span>
+                        </div>
+                        <div class="info-item">
+                            <strong>Python Version:</strong>
+                            <span id="python-version">Loading...</span>
+                        </div>
+                        <div class="info-item">
+                            <strong>Database:</strong>
+                            <span id="database-info">Loading...</span>
+                        </div>
+                        <div class="info-item">
+                            <strong>Debug Mode:</strong>
+                            <span id="debug-mode">Loading...</span>
+                        </div>
+                        <div class="info-item">
+                            <strong>Timezone:</strong>
+                            <span id="timezone">Loading...</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary" onclick="refreshSystemInfo()">
+                        <i class="fas fa-sync-alt"></i> Refresh System Info
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- KYC Detail Modal -->
+    <div id="kyc-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>KYC Submission Details</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div id="kyc-modal-body">
+                <!-- Content will be loaded dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Detail Modal -->
+    <div id="transaction-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Transaction Details</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div id="transaction-modal-body">
+                <!-- Content will be loaded dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{% static 'js/dashboard.js' %}"></script>
+    <script>
+        // Update current time
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleString();
+        }
+        
+        updateTime();
+        setInterval(updateTime, 1000);
+        
+        // View KYC details
+        function viewKYC(id) {
+            fetch(`/api/kyc/${id}/`)
+                .then(response => response.json())
+                .then(data => {
+                    const modal = document.getElementById('kyc-modal');
+                    const body = document.getElementById('kyc-modal-body');
+                    
+                    body.innerHTML = `
+                        <div class="form-group">
+                            <label>Submission ID</label>
+                            <div class="form-control">${data.id}</div>
+                        </div>
+                        <div class="form-group">
+                            <label>User</label>
+                            <div class="form-control">${data.user || 'Anonymous'}</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Status</label>
+                            <div class="form-control">
+                                <span class="status ${data.status.toLowerCase()}">${data.status}</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Submitted At</label>
+                            <div class="form-control">${new Date(data.submitted_at).toLocaleString()}</div>
+                        </div>
+                        ${data.notes ? `
+                        <div class="form-group">
+                            <label>Notes</label>
+                            <div class="form-control">${data.notes}</div>
+                        </div>
+                        ` : ''}
+                        <div class="form-group">
+                            <label>Data</label>
+                            <div class="form-control" style="height: 200px; overflow-y: auto;">
+                                <pre>${JSON.stringify(data.data, null, 2)}</pre>
+                            </div>
+                        </div>
+                    `;
+                    
+                    modal.style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error loading KYC details:', error);
+                    showNotification('Error loading KYC details', 'error');
+                });
+        }
+        
+        // View transaction details
+        function viewTransaction(id) {
+            fetch(`/api/payments/transaction/${id}/`)
+                .then(response => response.json())
+                .then(data => {
+                    const modal = document.getElementById('transaction-modal');
+                    const body = document.getElementById('transaction-modal-body');
+                    
+                    body.innerHTML = `
+                        <div class="form-group">
+                            <label>Reference</label>
+                            <div class="form-control">${data.reference}</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Customer</label>
+                            <div class="form-control">${data.customer_name}</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Amount</label>
+                            <div class="form-control">GHS ${data.amount}</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Status</label>
+                            <div class="form-control">
+                                <span class="status ${data.status.toLowerCase()}">${data.status}</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Created At</label>
+                            <div class="form-control">${new Date(data.created_at).toLocaleString()}</div>
+                        </div>
+                    `;
+                    
+                    modal.style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error loading transaction details:', error);
+                    showNotification('Error loading transaction details', 'error');
+                });
+        }
+    </script>
+</body>
+</html> 
