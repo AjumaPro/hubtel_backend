@@ -87,8 +87,8 @@ if config('USE_POSTGRESQL', default=False, cast=bool):
         "default": {
             "ENGINE": "django.db.backends.postgresql",
             "NAME": config('DB_NAME', default='glico_capital'),
-            "USER": config('DB_USER', default='postgres'),
-            "PASSWORD": config('DB_PASSWORD', default=''),
+            "USER": config('DB_USER', default='Admin'),
+            "PASSWORD": config('DB_PASSWORD', default='024973'),
             "HOST": config('DB_HOST', default='localhost'),
             "PORT": config('DB_PORT', default='5432'),
             "OPTIONS": {
