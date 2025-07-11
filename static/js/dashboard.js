@@ -204,7 +204,7 @@ function refreshSection(section) {
 
 // Refresh stats function
 function refreshStats() {
-    fetch('/api/dashboard/stats/')
+    fetch('/dashboard/api/stats/')
         .then(response => response.json())
         .then(data => {
             updateStats(data);
@@ -576,9 +576,21 @@ function loadSystemInfo() {
         .then(data => {
             document.getElementById('django-version').textContent = data.django_version;
             document.getElementById('python-version').textContent = data.python_version;
-            document.getElementById('database-info').textContent = data.database.split('.')[-1];
+            document.getElementById('database-info').textContent = `${data.database_type} (${data.database_name})`;
             document.getElementById('debug-mode').textContent = data.debug_mode ? 'Enabled' : 'Disabled';
             document.getElementById('timezone').textContent = data.timezone;
+            
+            // Update database status in the settings section
+            const dbStatusElement = document.getElementById('database-status');
+            if (dbStatusElement) {
+                if (data.database_status === 'Connected') {
+                    dbStatusElement.textContent = `${data.database_type}: Connected`;
+                    dbStatusElement.className = 'status success';
+                } else {
+                    dbStatusElement.textContent = `${data.database_type}: ${data.database_status}`;
+                    dbStatusElement.className = 'status error';
+                }
+            }
         })
         .catch(error => {
             console.error('Error loading system info:', error);

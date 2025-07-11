@@ -205,12 +205,66 @@ Content-Type: application/json
 4. **Validation**: All input data is validated before processing
 5. **Logging**: Comprehensive logging for debugging and monitoring
 
+## 🗄️ Database Setup
+
+### PostgreSQL Setup (Recommended for Production)
+
+The application supports both SQLite (development) and PostgreSQL (production). To set up PostgreSQL:
+
+#### 1. Quick Setup (Automated)
+```bash
+# Run the PostgreSQL setup script
+./setup_postgres.sh
+```
+
+#### 2. Manual Setup
+
+**Install PostgreSQL:**
+- **macOS**: `brew install postgresql`
+- **Ubuntu**: `sudo apt-get install postgresql postgresql-contrib`
+- **CentOS**: `sudo yum install postgresql postgresql-server`
+
+**Install Python Dependencies:**
+```bash
+pip install psycopg2-binary==2.9.9
+```
+
+**Create Database:**
+```bash
+createdb glico_capital
+```
+
+**Configure Environment:**
+Copy `.env.example` to `.env` and update:
+```bash
+# Database Configuration
+USE_POSTGRESQL=True
+DB_NAME=glico_capital
+DB_USER=postgres
+DB_PASSWORD=your_password
+DB_HOST=localhost
+DB_PORT=5432
+```
+
+**Run Migration:**
+```bash
+python migrate_to_postgres.py
+```
+
+### SQLite Setup (Development)
+
+For development, you can use SQLite:
+```bash
+# Set in .env file
+USE_POSTGRESQL=False
+```
+
 ## 🚀 Deployment
 
 ### Production Setup
 
 1. **Set DEBUG=False** in production
-2. **Use a production database** (PostgreSQL recommended)
+2. **Use PostgreSQL database** (configured above)
 3. **Configure proper CORS settings**
 4. **Set up HTTPS certificates**
 5. **Use environment variables for all secrets**
@@ -222,15 +276,16 @@ DEBUG = False
 ALLOWED_HOSTS = ['your-domain.com', 'www.your-domain.com']
 CORS_ALLOWED_ORIGINS = ['https://your-frontend-domain.com']
 
-# Use PostgreSQL in production
+# PostgreSQL configuration (handled by environment variables)
+USE_POSTGRESQL = True
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'your_db_name',
-        'USER': 'your_db_user',
-        'PASSWORD': 'your_db_password',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': config('DB_NAME'),
+        'USER': config('DB_USER'),
+        'PASSWORD': config('DB_PASSWORD'),
+        'HOST': config('DB_HOST'),
+        'PORT': config('DB_PORT'),
     }
 }
 ```

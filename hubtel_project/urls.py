@@ -20,12 +20,17 @@ from django.http import HttpResponse
 from django.utils.html import escape
 from django.conf import settings
 from django.conf.urls.static import static
+from django.shortcuts import redirect
 from payments.models import PaymentTransaction
 import datetime
 import json
 import requests
 
 def home(request):
+    # Redirect to dashboard
+    return redirect('dashboard')
+
+def api_home(request):
     # Branding/logo (inline SVG)
     logo_svg = '''<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="24" r="24" fill="#1a237e"/><text x="50%" y="55%" text-anchor="middle" fill="#fff" font-size="22" font-family="Segoe UI,Arial,sans-serif" dy=".3em">GC</text></svg>'''
 
@@ -162,6 +167,7 @@ def home(request):
                 <tr><td><b>Database:</b></td><td>{db_status}</td><td><b>Hubtel API:</b></td><td>{hubtel_status}</td></tr>
             </table>
             <div class='links'>
+                <a href='/dashboard/'>Dashboard</a>
                 <a href='/admin/'>Admin Panel</a>
                 <a href='/api/payments/'>API Root</a>
                 <a href='https://hubtel.com/' target='_blank'>Hubtel</a>
@@ -197,6 +203,7 @@ def home(request):
 
 urlpatterns = [
     path('', home, name='home'),
+    path('api-home/', api_home, name='api_home'),
     path('admin/', admin.site.urls),
     path('api/payments/', include('payments.urls')),
     path('api/kyc/', include('kyc.urls')),

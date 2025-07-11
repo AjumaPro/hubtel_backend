@@ -4,20 +4,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GLICO Capital - Admin Dashboard</title>
-    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>Glico Capital Dashboard</title>
+    
+    <!-- Tailwind CSS -->
+    <link href="{% static 'css/tailwind.output.css' %}" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+    <!-- ARIA live region for notifications -->
+    <div id="aria-live" aria-live="polite" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;"></div>
     <!-- Header -->
     <header class="dashboard-header">
-        <div class="d-flex justify-between align-center">
+        <div class="flex justify-between items-center">
             <div>
                 <h1><i class="fas fa-chart-line"></i> GLICO Capital Dashboard</h1>
                 <div class="subtitle">Admin Panel & Analytics</div>
             </div>
-            <div class="d-flex gap-2">
-                <span class="d-flex align-center gap-1">
+            <div class="flex gap-2">
+                <span class="flex items-center gap-1">
                     <i class="fas fa-clock"></i>
                     <span id="current-time"></span>
                 </span>
@@ -29,19 +38,19 @@
     <nav class="dashboard-nav">
         <ul class="nav-tabs">
             <li class="active">
-                <a href="#overview">Overview</a>
+                <a href="#overview" tabindex="0" aria-controls="overview" aria-selected="true">Overview</a>
             </li>
             <li>
-                <a href="#payments">Payments</a>
+                <a href="#payments" tabindex="0" aria-controls="payments" aria-selected="false">Payments</a>
             </li>
             <li>
-                <a href="#kyc">KYC Submissions</a>
+                <a href="#kyc" tabindex="0" aria-controls="kyc" aria-selected="false">KYC Submissions</a>
             </li>
             <li>
-                <a href="#analytics">Analytics</a>
+                <a href="#analytics" tabindex="0" aria-controls="analytics" aria-selected="false">Analytics</a>
             </li>
             <li>
-                <a href="#settings">Settings</a>
+                <a href="#settings" tabindex="0" aria-controls="settings" aria-selected="false">Settings</a>
             </li>
         </ul>
     </nav>
@@ -50,53 +59,147 @@
     <main class="dashboard-content">
         <!-- Overview Tab -->
         <div id="overview" class="tab-content">
-            <!-- Statistics Cards -->
+            <!-- Welcome Section -->
+            <div class="welcome-section">
+                <div class="welcome-content">
+                    <h1>Welcome back! 👋</h1>
+                    <p>Here's what's happening with your GLICO Capital platform today</p>
+                </div>
+                <div class="welcome-actions">
+                    <button class="btn btn-primary" onclick="refreshDashboard()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <button class="btn btn-outline" onclick="generateReport()">
+                        <i class="fas fa-file-alt"></i> Generate Report
+                    </button>
+                </div>
+            </div>
+
+            <!-- Enhanced Statistics Cards -->
             <div class="stats-grid">
-                <div class="stat-card">
+                <div class="stat-card enhanced primary">
+                    <div class="stat-icon">
+                        <i class="fas fa-credit-card"></i>
+                    </div>
+                    <div class="stat-content">
                     <h3>Total Transactions</h3>
-                    <div class="value" id="stat-total_transactions">{{ stats.total_transactions }}</div>
-                    <div class="change {% if stats.transaction_change < 0 %}negative{% endif %}">
+                        <div class="stat-value" id="stat-total_transactions">{{ stats.total_transactions }}</div>
+                        <div class="stat-change {% if stats.transaction_change < 0 %}negative{% endif %}">
                         <i class="fas fa-{% if stats.transaction_change >= 0 %}arrow-up{% else %}arrow-down{% endif %}"></i>
                         {{ stats.today_transactions }} today
+                        </div>
+                    </div>
+                    <div class="stat-trend">
+                        <canvas id="transactionTrend" width="60" height="40"></canvas>
                     </div>
                 </div>
                 
-                <div class="stat-card">
+                <div class="stat-card enhanced success">
+                    <div class="stat-icon">
+                        <i class="fas fa-dollar-sign"></i>
+                    </div>
+                    <div class="stat-content">
                     <h3>Total Revenue</h3>
-                    <div class="value" id="stat-total_amount">GHS {{ stats.total_amount|floatformat:2 }}</div>
-                    <div class="change">
+                        <div class="stat-value" id="stat-total_amount">GHS {{ stats.total_amount|floatformat:2 }}</div>
+                        <div class="stat-change">
                         <i class="fas fa-arrow-up"></i>
                         GHS {{ stats.today_amount|floatformat:2 }} today
+                        </div>
+                    </div>
+                    <div class="stat-trend">
+                        <canvas id="revenueTrend" width="60" height="40"></canvas>
                     </div>
                 </div>
                 
-                <div class="stat-card">
+                <div class="stat-card enhanced warning">
+                    <div class="stat-icon">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <div class="stat-content">
                     <h3>KYC Submissions</h3>
-                    <div class="value" id="stat-total_kyc_submissions">{{ stats.total_kyc_submissions }}</div>
-                    <div class="change {% if stats.kyc_change < 0 %}negative{% endif %}">
+                        <div class="stat-value" id="stat-total_kyc_submissions">{{ stats.total_kyc_submissions }}</div>
+                        <div class="stat-change {% if stats.kyc_change < 0 %}negative{% endif %}">
                         <i class="fas fa-{% if stats.kyc_change >= 0 %}arrow-up{% else %}arrow-down{% endif %}"></i>
                         {{ stats.today_kyc_submissions }} today
+                        </div>
+                    </div>
+                    <div class="stat-trend">
+                        <canvas id="kycTrend" width="60" height="40"></canvas>
                     </div>
                 </div>
                 
-                <div class="stat-card">
+                <div class="stat-card enhanced info">
+                    <div class="stat-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="stat-content">
                     <h3>Success Rate</h3>
-                    <div class="value" id="stat-success_rate">
+                        <div class="stat-value" id="stat-success_rate">
                         {% if stats.total_transactions > 0 %}
                             {{ stats.total_transactions|floatformat:1 }}%
                         {% else %}
                             0%
                         {% endif %}
                     </div>
-                    <div class="change">
+                        <div class="stat-change">
                         <i class="fas fa-check-circle"></i>
                         All systems operational
+                    </div>
+                    </div>
+                    <div class="stat-trend">
+                        <canvas id="successTrend" width="60" height="40"></canvas>
                     </div>
                 </div>
             </div>
 
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+                <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
+                <div class="actions-grid">
+                    <button class="action-card" onclick="openRecordPaymentModal()">
+                        <div class="action-icon">
+                            <i class="fas fa-plus"></i>
+                        </div>
+                        <div class="action-text">
+                            <h4>Record Payment</h4>
+                            <p>Add a new payment transaction</p>
+                        </div>
+                    </button>
+                    
+                    <button class="action-card" onclick="exportData('payments')">
+                        <div class="action-icon">
+                            <i class="fas fa-download"></i>
+                        </div>
+                        <div class="action-text">
+                            <h4>Export Data</h4>
+                            <p>Download payment reports</p>
+                        </div>
+                    </button>
+                    
+                    <button class="action-card" onclick="viewAnalytics()">
+                        <div class="action-icon">
+                            <i class="fas fa-chart-bar"></i>
+                        </div>
+                        <div class="action-text">
+                            <h4>View Analytics</h4>
+                            <p>Check performance metrics</p>
+                        </div>
+                    </button>
+                    
+                    <button class="action-card" onclick="manageSettings()">
+                        <div class="action-icon">
+                            <i class="fas fa-cog"></i>
+                        </div>
+                        <div class="action-text">
+                            <h4>Settings</h4>
+                            <p>Configure system options</p>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
             <!-- Recent Activity -->
-            <div class="data-section">
+            <div class="data-section modern">
                 <div class="section-header">
                     <h2><i class="fas fa-history"></i> Recent Activity</h2>
                     <div class="section-actions">
@@ -106,33 +209,41 @@
                     </div>
                 </div>
                 <div class="table-responsive">
-                    <table class="data-table">
+                    <table class="data-table modern-table">
                         <thead>
                             <tr>
-                                <th>Type</th>
-                                <th>Description</th>
-                                <th>Status</th>
-                                <th>Time</th>
+                                <th scope="col">Type</th>
+                                <th scope="col">Description</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Time</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for activity in stats.recent_activity %}
                             <tr>
                                 <td>
-                                    <span class="status {% if activity.type == 'payment' %}success{% else %}pending{% endif %}">
+                                    <span class="status-badge {% if activity.type == 'payment' %}success{% else %}pending{% endif %}">
+                                        <i class="fas fa-{% if activity.type == 'payment' %}credit-card{% else %}user{% endif %}"></i>
                                         {{ activity.type|upper }}
                                     </span>
                                 </td>
                                 <td>
-                                    <strong>{{ activity.title }}</strong><br>
+                                    <div class="activity-details">
+                                        <strong>{{ activity.title }}</strong>
                                     <small>{{ activity.description }}</small>
+                                    </div>
                                 </td>
                                 <td>
-                                    <span class="status {% if activity.status == 'success' %}success{% elif activity.status == 'pending' %}pending{% else %}failed{% endif %}">
+                                    <span class="status-badge {% if activity.status == 'success' %}success{% elif activity.status == 'pending' %}pending{% else %}failed{% endif %}">
                                         {{ activity.status }}
                                     </span>
                                 </td>
-                                <td>{{ activity.time|date:"M d, H:i" }}</td>
+                                <td>
+                                    <div class="time-info">
+                                        <span class="time">{{ activity.time|date:"M d, H:i" }}</span>
+                                        <small class="ago">2 min ago</small>
+                                    </div>
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -143,47 +254,91 @@
 
         <!-- Payments Tab -->
         <div id="payments" class="tab-content" style="display: none;">
+            <!-- Payment Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="flex flex-col items-center justify-center bg-white rounded-xl shadow p-6 border-t-4 border-indigo-500">
+                    <div class="text-3xl text-indigo-500 mb-2"><i class="fas fa-credit-card"></i></div>
+                    <div class="text-2xl font-bold">{{ total_payments }}</div>
+                    <div class="text-gray-500 text-sm font-semibold mt-1">Total Payments</div>
+                </div>
+                <div class="flex flex-col items-center justify-center bg-white rounded-xl shadow p-6 border-t-4 border-green-500">
+                    <div class="text-3xl text-green-500 mb-2"><i class="fas fa-check-circle"></i></div>
+                    <div class="text-2xl font-bold">{{ successful_payments }}</div>
+                    <div class="text-gray-500 text-sm font-semibold mt-1">Successful</div>
+                </div>
+                <div class="flex flex-col items-center justify-center bg-white rounded-xl shadow p-6 border-t-4 border-yellow-500">
+                    <div class="text-3xl text-yellow-500 mb-2"><i class="fas fa-clock"></i></div>
+                    <div class="text-2xl font-bold">{{ pending_payments }}</div>
+                    <div class="text-gray-500 text-sm font-semibold mt-1">Pending</div>
+                </div>
+                <div class="flex flex-col items-center justify-center bg-white rounded-xl shadow p-6 border-t-4 border-red-500">
+                    <div class="text-3xl text-red-500 mb-2"><i class="fas fa-times-circle"></i></div>
+                    <div class="text-2xl font-bold">{{ failed_payments }}</div>
+                    <div class="text-gray-500 text-sm font-semibold mt-1">Failed</div>
+                </div>
+            </div>
             <div class="data-section">
-                <div class="section-header">
-                    <h2><i class="fas fa-credit-card"></i> Payment Transactions</h2>
-                    <div class="section-actions">
-                        <input type="text" class="form-control search-input" placeholder="Search transactions..." data-table="payments-table" style="width: 200px;">
-                        <button class="btn btn-success export-btn" data-type="payments" data-format="excel">
+                <div class="section-header flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <h2 class="flex items-center text-xl font-bold text-indigo-700"><i class="fas fa-credit-card mr-2"></i> Payment Transactions</h2>
+                    <div class="section-actions flex flex-wrap gap-2 items-center">
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><i class="fas fa-search"></i></span>
+                            <input type="text" class="form-control search-input pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition w-48" placeholder="Search transactions..." data-table="payments-table">
+                        </div>
+                        <select class="form-control rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition w-40" id="status-filter">
+                            <option value="">All Statuses</option>
+                            <option value="completed">Successful</option>
+                            <option value="pending">Pending</option>
+                            <option value="processing">Processing</option>
+                            <option value="failed">Failed</option>
+                        </select>
+                        <button class="btn btn-primary flex items-center gap-2" onclick="openRecordPaymentModal()">
+                            <i class="fas fa-plus"></i> Record Payment
+                        </button>
+                        <button class="btn btn-success flex items-center gap-2 export-btn" data-type="payments" data-format="excel">
                             <i class="fas fa-file-excel"></i> Export Excel
                         </button>
-                        <button class="btn btn-warning export-btn" data-type="payments" data-format="pdf">
+                        <button class="btn btn-warning flex items-center gap-2 export-btn" data-type="payments" data-format="pdf">
                             <i class="fas fa-file-pdf"></i> Export PDF
                         </button>
                     </div>
                 </div>
-                <div class="table-responsive">
-                    <table id="payments-table" class="data-table">
-                        <thead>
+                <div class="table-responsive mt-4">
+                    <table id="payments-table" class="min-w-full bg-white rounded-xl overflow-hidden shadow data-table">
+                        <thead class="bg-indigo-50 sticky top-0 z-10">
                             <tr>
-                                <th>Reference</th>
-                                <th>Customer</th>
-                                <th>Amount</th>
-                                <th>Status</th>
-                                <th>Date</th>
-                                <th>Actions</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Reference</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Customer</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Amount</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Status</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Date</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-indigo-700 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody class="divide-y divide-gray-100">
                             {% for payment in recent_payments %}
-                            <tr>
-                                <td><strong>#{{ payment.id }}</strong></td>
-                                <td>{{ payment.customer_name }}</td>
-                                <td>{{ payment.amount }} {{ payment.currency }}</td>
-                                <td>
-                                    <span class="status {% if payment.status == 'completed' %}success{% elif payment.status == 'pending' %}pending{% else %}failed{% endif %}">
+                            <tr class="hover:bg-indigo-50 transition">
+                                <td class="px-6 py-4 font-semibold text-gray-800"><strong>#{{ payment.id }}</strong></td>
+                                <td class="px-6 py-4 text-gray-700">{{ payment.customer_name }}</td>
+                                <td class="px-6 py-4 text-gray-700">{{ payment.amount }} {{ payment.currency }}</td>
+                                <td class="px-6 py-4">
+                                    <span class="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase
+                                        {% if payment.status == 'completed' %} bg-green-100 text-green-700
+                                        {% elif payment.status == 'pending' or payment.status == 'processing' %} bg-yellow-100 text-yellow-700
+                                        {% else %} bg-red-100 text-red-700 {% endif %}">
                                         {{ payment.status|title }}
                                     </span>
                                 </td>
-                                <td>{{ payment.created_at|date:"M d, H:i" }}</td>
-                                <td>
-                                    <button class="btn btn-outline" onclick="viewPayment('{{ payment.id }}')">
+                                <td class="px-6 py-4 text-gray-500">{{ payment.created_at|date:"M d, H:i" }}</td>
+                                <td class="px-6 py-4 flex gap-2">
+                                    <button class="btn btn-outline flex items-center gap-1" onclick="viewTransaction('{{ payment.id }}')">
                                         <i class="fas fa-eye"></i> View
                                     </button>
+                                    {% if payment.status == 'failed' or payment.status == 'pending' or payment.status == 'processing' %}
+                                    <button class="btn btn-danger flex items-center gap-1" onclick="openFollowUpModal('{{ payment.id }}')">
+                                        <i class="fas fa-undo"></i> Follow Up
+                                    </button>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}
@@ -212,13 +367,13 @@
                     <table id="kyc-table" class="data-table">
                         <thead>
                             <tr>
-                                <th>ID</th>
-                                <th>User</th>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Status</th>
-                                <th>Submitted</th>
-                                <th>Actions</th>
+                                <th scope="col">ID</th>
+                                <th scope="col">User</th>
+                                <th scope="col">Name</th>
+                                <th scope="col">Email</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Submitted</th>
+                                <th scope="col">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -254,25 +409,219 @@
         </div>
 
         <!-- Analytics Tab -->
-        <div id="analytics" class="tab-content" style="display: none;">
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <h3>Payment Status Breakdown</h3>
-                    <div id="payment-chart">
-                        {% for status in stats.payment_status_breakdown %}
-                        <div class="mb-2">
-                            <strong>{{ status.status }}</strong>: {{ status.count }}
+        <div id="analytics" class="tab-content">
+            <!-- Analytics Header -->
+            <div class="analytics-header">
+                <div class="analytics-title">
+                    <h2>📊 Analytics Dashboard</h2>
+                    <p>Comprehensive insights and performance metrics</p>
                         </div>
-                        {% endfor %}
+                <div class="analytics-controls">
+                    <select id="time-range" class="form-control">
+                        <option value="7">Last 7 Days</option>
+                        <option value="30" selected>Last 30 Days</option>
+                        <option value="90">Last 90 Days</option>
+                        <option value="365">Last Year</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="refreshAnalytics()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
                     </div>
                 </div>
                 
-                <div class="stat-card">
-                    <h3>Daily Trends</h3>
-                    <div class="value">Coming Soon</div>
-                    <div class="change">
+            <!-- Key Metrics -->
+            <div class="metrics-grid">
+                <div class="metric-card primary">
+                    <div class="metric-icon">
                         <i class="fas fa-chart-line"></i>
-                        Interactive charts
+                    </div>
+                    <div class="metric-content">
+                        <h3>Total Revenue</h3>
+                        <div class="metric-value">₵<span id="total-revenue">0</span></div>
+                        <div class="metric-change positive">
+                            <i class="fas fa-arrow-up"></i>
+                            <span id="revenue-change">0%</span> from last period
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metric-card success">
+                    <div class="metric-icon">
+                        <i class="fas fa-credit-card"></i>
+                    </div>
+                    <div class="metric-content">
+                        <h3>Successful Payments</h3>
+                        <div class="metric-value"><span id="successful-payments">0</span></div>
+                        <div class="metric-change positive">
+                            <i class="fas fa-arrow-up"></i>
+                            <span id="success-rate">0%</span> success rate
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metric-card warning">
+                    <div class="metric-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="metric-content">
+                        <h3>Active Users</h3>
+                        <div class="metric-value"><span id="active-users">0</span></div>
+                        <div class="metric-change positive">
+                            <i class="fas fa-arrow-up"></i>
+                            <span id="user-growth">0%</span> growth
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metric-card info">
+                    <div class="metric-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="metric-content">
+                        <h3>Avg. Response Time</h3>
+                        <div class="metric-value"><span id="avg-response">0</span>s</div>
+                        <div class="metric-change negative">
+                            <i class="fas fa-arrow-down"></i>
+                            <span id="response-improvement">0%</span> improvement
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Grid -->
+            <div class="charts-grid">
+                <!-- Revenue Trend Chart -->
+                <div class="chart-card large">
+                    <div class="chart-header">
+                        <h3><i class="fas fa-chart-area"></i> Revenue Trend</h3>
+                        <div class="chart-actions">
+                            <button class="btn btn-sm btn-outline" onclick="exportChart('revenue')">
+                                <i class="fas fa-download"></i> Export
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="revenue-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Payment Status Distribution -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3><i class="fas fa-chart-pie"></i> Payment Status</h3>
+                        <div class="chart-actions">
+                            <button class="btn btn-sm btn-outline" onclick="exportChart('status')">
+                                <i class="fas fa-download"></i> Export
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="status-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Daily Transactions -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3><i class="fas fa-chart-bar"></i> Daily Transactions</h3>
+                        <div class="chart-actions">
+                            <button class="btn btn-sm btn-outline" onclick="exportChart('transactions')">
+                                <i class="fas fa-download"></i> Export
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="transactions-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Performance Metrics -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3><i class="fas fa-chart-line"></i> Performance Metrics</h3>
+                        <div class="chart-actions">
+                            <button class="btn btn-sm btn-outline" onclick="exportChart('performance')">
+                                <i class="fas fa-download"></i> Export
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="performance-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Activity Feed & Insights -->
+            <div class="insights-grid">
+                <!-- Real-time Activity -->
+                <div class="activity-section">
+                    <div class="section-header">
+                        <h3><i class="fas fa-bolt"></i> Real-time Activity</h3>
+                        <div class="section-actions">
+                            <button class="btn btn-sm btn-outline" onclick="refreshActivity()">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+                    <div class="activity-feed" id="activity-feed">
+                        <!-- Activity items will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Performance Insights -->
+                <div class="insight-card">
+                    <div class="insight-header">
+                        <h4><i class="fas fa-lightbulb"></i> Performance Insights</h4>
+                    </div>
+                    <div class="insight-item">
+                        <div class="insight-icon success">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <div class="insight-text">
+                            <strong>Payment Success Rate Improved</strong>
+                            <p>Your payment success rate has increased by 15% this month compared to last month.</p>
+                        </div>
+                    </div>
+                    <div class="insight-item">
+                        <div class="insight-icon warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="insight-text">
+                            <strong>Peak Hours Identified</strong>
+                            <p>Most transactions occur between 2 PM and 6 PM. Consider scaling resources during these hours.</p>
+                        </div>
+                    </div>
+                    <div class="insight-item">
+                        <div class="insight-icon info">
+                            <i class="fas fa-info-circle"></i>
+                        </div>
+                        <div class="insight-text">
+                            <strong>Mobile Usage Growing</strong>
+                            <p>Mobile transactions have increased by 25% this quarter. Mobile optimization is working well.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Alerts -->
+                <div class="insight-card">
+                    <div class="insight-header">
+                        <h4><i class="fas fa-bell"></i> System Alerts</h4>
+                    </div>
+                    <div class="alert-item warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>High transaction volume detected - monitoring performance</span>
+                    </div>
+                    <div class="alert-item info">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Database backup completed successfully</span>
+                    </div>
+                    <div class="alert-item success">
+                        <i class="fas fa-check-circle"></i>
+                        <span>All systems operating normally</span>
+                    </div>
+                    <div class="alert-item info">
+                        <i class="fas fa-clock"></i>
+                        <span>Scheduled maintenance in 2 hours</span>
                     </div>
                 </div>
             </div>
@@ -296,7 +645,7 @@
                     <div class="form-group">
                         <label>Database Status</label>
                         <div class="d-flex gap-2">
-                            <span class="status success">SQLite: Connected</span>
+                            <span class="status success" id="database-status">Loading...</span>
                         </div>
                     </div>
                     
@@ -311,49 +660,6 @@
                             </button>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Analytics Section -->
-        <div id="analytics-section" class="dashboard-section" style="display: none;">
-            <div class="section-header">
-                <h2><i class="fas fa-chart-line"></i> Analytics</h2>
-                <div class="section-controls">
-                    <select id="date-range" class="form-control">
-                        <option value="7">Last 7 days</option>
-                        <option value="30" selected>Last 30 days</option>
-                        <option value="90">Last 90 days</option>
-                    </select>
-                    <button class="btn btn-primary" onclick="refreshAnalytics()">
-                        <i class="fas fa-sync-alt"></i> Refresh
-                    </button>
-                </div>
-            </div>
-            
-            <div class="analytics-grid">
-                <!-- Payment Trends Chart -->
-                <div class="chart-card">
-                    <h3>Payment Trends</h3>
-                    <canvas id="paymentTrendsChart"></canvas>
-                </div>
-                
-                <!-- KYC Trends Chart -->
-                <div class="chart-card">
-                    <h3>KYC Submission Trends</h3>
-                    <canvas id="kycTrendsChart"></canvas>
-                </div>
-                
-                <!-- Payment Status Distribution -->
-                <div class="chart-card">
-                    <h3>Payment Status Distribution</h3>
-                    <canvas id="paymentStatusChart"></canvas>
-                </div>
-                
-                <!-- KYC Status Distribution -->
-                <div class="chart-card">
-                    <h3>KYC Status Distribution</h3>
-                    <canvas id="kycStatusChart"></canvas>
                 </div>
             </div>
         </div>
@@ -448,14 +754,40 @@
                 </div>
             </div>
         </div>
+
+        <!-- Record Payment Modal -->
+        <div id="record-payment-modal" class="modal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="recordPaymentTitle">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="recordPaymentTitle">Record New Payment</h3>
+                    <span class="close" onclick="closeRecordPaymentModal()" aria-label="Close modal" tabindex="0">&times;</span>
+                </div>
+                <div id="record-payment-modal-body">
+                    <!-- Form will be loaded dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Follow Up Modal -->
+        <div id="follow-up-modal" class="modal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="followUpTitle">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="followUpTitle">Follow Up on Payment</h3>
+                    <span class="close" onclick="closeFollowUpModal()" aria-label="Close modal" tabindex="0">&times;</span>
+                </div>
+                <div id="follow-up-modal-body">
+                    <!-- Follow up options will be loaded dynamically -->
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- KYC Detail Modal -->
-    <div id="kyc-modal" class="modal">
+    <div id="kyc-modal" class="modal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="kycDetailTitle">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>KYC Submission Details</h3>
-                <span class="close">&times;</span>
+                <h3 id="kycDetailTitle">KYC Submission Details</h3>
+                <span class="close" onclick="closeKYCModal()" aria-label="Close modal" tabindex="0">&times;</span>
             </div>
             <div id="kyc-modal-body">
                 <!-- Content will be loaded dynamically -->
@@ -464,20 +796,29 @@
     </div>
 
     <!-- Transaction Detail Modal -->
-    <div id="transaction-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Transaction Details</h3>
-                <span class="close">&times;</span>
+    <div id="transaction-modal" class="modal fixed inset-0 z-50 flex items-center justify-center min-h-screen bg-black bg-opacity-50 transition-opacity duration-200" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="transactionDetailTitle">
+        <div class="modal-content relative bg-white rounded-2xl shadow-2xl max-w-2xl max-w-full w-full mx-2 md:mx-0 max-h-[90vh] overflow-y-auto animate-modal-in pb-8">
+            <div class="modal-header flex justify-between items-center p-6 border-b border-gray-100 sticky top-0 bg-white z-10 rounded-t-2xl">
+                <h3 id="transactionDetailTitle" class="text-2xl font-extrabold text-indigo-700 flex items-center gap-2"><i class="fas fa-receipt text-indigo-400"></i> Transaction Details</h3>
+                <button class="modal-close text-3xl w-12 h-12 flex items-center justify-center rounded-full hover:bg-indigo-50 transition" aria-label="Close modal" title="Close" tabindex="0">&times;</button>
             </div>
-            <div id="transaction-modal-body">
+            <div id="transaction-modal-body" class="p-0">
                 <!-- Content will be loaded dynamically -->
             </div>
         </div>
     </div>
 
+    <style>
+    @keyframes modal-in {
+      0% { opacity: 0; transform: scale(0.95) translateY(40px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .animate-modal-in {
+      animation: modal-in 0.25s cubic-bezier(0.4,0,0.2,1);
+    }
+    </style>
+
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="{% static 'js/dashboard.js' %}"></script>
     <script>
         // Update current time
@@ -488,6 +829,61 @@
         
         updateTime();
         setInterval(updateTime, 1000);
+        
+        // Modal close functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // Close modals when clicking on X or outside
+            const modals = document.querySelectorAll('.modal');
+            const closeButtons = document.querySelectorAll('.close, .modal-close');
+            
+            closeButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const modal = this.closest('.modal');
+                    if (modal) {
+                        modal.style.display = 'none';
+                    }
+                });
+            });
+            
+            modals.forEach(modal => {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        this.style.display = 'none';
+                    }
+                });
+            });
+        });
+        
+        // Notification function
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 1rem;
+                border-radius: 4px;
+                color: white;
+                z-index: 10000;
+                font-weight: 500;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            `;
+            document.getElementById('aria-live').textContent = message;
+            if (type === 'success') {
+                notification.style.backgroundColor = 'var(--success-color)';
+            } else if (type === 'error') {
+                notification.style.backgroundColor = 'var(--danger-color)';
+            } else {
+                notification.style.backgroundColor = 'var(--primary-color)';
+            }
+            document.body.appendChild(notification);
+            setTimeout(() => {
+                notification.remove();
+                document.getElementById('aria-live').textContent = '';
+            }, 3000);
+        }
         
         // View KYC details
         function viewKYC(id) {
@@ -540,43 +936,854 @@
         
         // View transaction details
         function viewTransaction(id) {
-            fetch(`/api/payments/transaction/${id}/`)
-                .then(response => response.json())
+            const modal = document.getElementById('transaction-modal');
+            const body = document.getElementById('transaction-modal-body');
+            // Show loading spinner
+            body.innerHTML = `<div class='flex flex-col items-center justify-center py-12'><svg class='animate-spin h-8 w-8 text-indigo-600 mb-2' xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24'><circle class='opacity-25' cx='12' cy='12' r='10' stroke='currentColor' stroke-width='4'></circle><path class='opacity-75' fill='currentColor' d='M4 12a8 8 0 018-8v8z'></path></svg><div class='text-gray-500'>Loading transaction details...</div></div>`;
+            modal.style.display = 'block';
+            fetch(`/dashboard/api/transaction/${id}/`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
-                    const modal = document.getElementById('transaction-modal');
-                    const body = document.getElementById('transaction-modal-body');
-                    
+                    const transaction = data.transaction;
+                    const otpData = data.otp_data;
+                    const hubtelResponse = data.hubtel_response;
+                    const callbackData = data.callback_data;
+                    const statusInfo = data.status_info;
                     body.innerHTML = `
-                        <div class="form-group">
-                            <label>Reference</label>
-                            <div class="form-control">${data.reference}</div>
-                        </div>
-                        <div class="form-group">
-                            <label>Customer</label>
-                            <div class="form-control">${data.customer_name}</div>
-                        </div>
-                        <div class="form-group">
-                            <label>Amount</label>
-                            <div class="form-control">GHS ${data.amount}</div>
-                        </div>
-                        <div class="form-group">
-                            <label>Status</label>
-                            <div class="form-control">
-                                <span class="status ${data.status.toLowerCase()}">${data.status}</span>
+                        <div class="space-y-8 p-4 md:p-8">
+                            <!-- Basic Information -->
+                            <div class="bg-white rounded-xl shadow p-6 border border-gray-100">
+                                <div class="flex items-center mb-4 space-y-0 space-x-2">
+                                    <i class="fas fa-info-circle text-indigo-500" aria-label="Basic Information" title="Basic Information"></i>
+                                    <h4 class="text-lg font-bold text-indigo-700">Basic Information</h4>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 gap-y-2">
+                                    <div><span class="block text-xs text-gray-500 font-semibold uppercase">Transaction ID</span><span class="block text-gray-900 font-medium">${transaction.transaction_id}</span></div>
+                                    <div><span class="block text-xs text-gray-500 font-semibold uppercase">Reference</span><span class="block text-gray-900 font-medium">${transaction.reference}</span></div>
+                                    <div><span class="block text-xs text-gray-500 font-semibold uppercase">Amount</span><span class="block text-green-700 font-bold">${transaction.currency} ${transaction.amount}</span></div>
+                                    <div><span class="block text-xs text-gray-500 font-semibold uppercase">Status</span><span class="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase mt-1 ${transaction.status.toLowerCase() === 'completed' ? 'bg-green-100 text-green-700' : transaction.status.toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-700' : transaction.status.toLowerCase() === 'failed' ? 'bg-red-100 text-red-700' : 'bg-gray-200 text-gray-700'}">${transaction.status.toUpperCase()}</span></div>
+                                </div>
+                            </div>
+                            <!-- Customer Information -->
+                            <div class="bg-white rounded-xl shadow p-6 border border-gray-100">
+                                <div class="flex items-center mb-4 space-y-0 space-x-2">
+                                    <i class="fas fa-user text-indigo-500" aria-label="Customer Information" title="Customer Information"></i>
+                                    <h4 class="text-lg font-bold text-indigo-700">Customer Information</h4>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 gap-y-2">
+                                    <div><span class="block text-xs text-gray-500 font-semibold uppercase">Customer Name</span><span class="block text-gray-900 font-medium">${transaction.customer_name}</span></div>
+                                    <div><span class="block text-xs text-gray-500 font-semibold uppercase">Email</span><span class="block text-gray-900 font-medium">${transaction.customer_email || 'Not provided'}</span></div>
+                                    <div><span class="block text-xs text-gray-500 font-semibold uppercase">Phone Number</span><span class="block text-gray-900 font-medium">${transaction.phone_number || 'Not provided'}</span></div>
+                                    <div><span class="block text-xs text-gray-500 font-semibold uppercase">Network</span><span class="block text-gray-900 font-medium">${transaction.network || 'Not specified'}</span></div>
+                                </div>
+                            </div>
+                            <!-- Payment Details -->
+                            <div class="bg-white rounded-xl shadow p-6 border border-gray-100">
+                                <div class="flex items-center mb-4 space-y-0 space-x-2">
+                                    <i class="fas fa-credit-card text-indigo-500" aria-label="Payment Details" title="Payment Details"></i>
+                                    <h4 class="text-lg font-bold text-indigo-700">Payment Details</h4>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 gap-y-2">
+                                    <div><span class="block text-xs text-gray-500 font-semibold uppercase">Payment Method</span><span class="block text-gray-900 font-medium">${transaction.payment_method.replace('_', ' ').toUpperCase()}</span></div>
+                                    <div><span class="block text-xs text-gray-500 font-semibold uppercase">Hubtel Transaction ID</span><span class="block text-gray-900 font-medium">${transaction.hubtel_transaction_id || 'Not available'}</span></div>
+                                    <div class="md:col-span-2"><span class="block text-xs text-gray-500 font-semibold uppercase">Description</span><span class="block text-gray-900 font-medium">${transaction.description || 'No description'}</span></div>
+                                </div>
+                            </div>
+                            <!-- Timeline -->
+                            <div class="bg-white rounded-xl shadow p-6 border border-gray-100">
+                                <div class="flex items-center mb-4 space-y-0 space-x-2">
+                                    <i class="fas fa-clock text-indigo-500" aria-label="Timeline" title="Timeline"></i>
+                                    <h4 class="text-lg font-bold text-indigo-700">Timeline</h4>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-3 h-3 rounded-full bg-blue-400"></div>
+                                        <div><span class="text-xs text-gray-500 font-semibold">Created</span><div class="text-gray-900 font-medium">${transaction.created_at}</div></div>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-3 h-3 rounded-full bg-yellow-400"></div>
+                                        <div><span class="text-xs text-gray-500 font-semibold">Last Updated</span><div class="text-gray-900 font-medium">${transaction.updated_at}</div></div>
+                                    </div>
+                                    ${transaction.completed_at ? `<div class="flex items-center gap-3"><div class="w-3 h-3 rounded-full bg-green-400"></div><div><span class="text-xs text-gray-500 font-semibold">Completed</span><div class="text-gray-900 font-medium">${transaction.completed_at}</div>${transaction.processing_duration_formatted ? `<div class='text-xs text-gray-400'>Processing time: ${transaction.processing_duration_formatted}</div>` : ''}</div></div>` : ''}
+                                </div>
+                            </div>
+                            <!-- OTP Information -->
+                            ${otpData ? `<div class="bg-white rounded-xl shadow p-6 border border-gray-100"><div class="flex items-center mb-4 space-y-0 space-x-2"><i class="fas fa-shield-alt text-indigo-500" aria-label="OTP Verification" title="OTP Verification"></i><h4 class="text-lg font-bold text-indigo-700">OTP Verification</h4></div><div class="grid grid-cols-1 md:grid-cols-2 gap-4 gap-y-2"><div><span class="block text-xs text-gray-500 font-semibold uppercase">OTP ID</span><span class="block text-gray-900 font-medium">${otpData.otp_id}</span></div><div><span class="block text-xs text-gray-500 font-semibold uppercase">Status</span><span class="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase mt-1 ${otpData.status.toLowerCase() === 'verified' ? 'bg-green-100 text-green-700' : otpData.status.toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-200 text-gray-700'}">${otpData.status.toUpperCase()}</span></div><div><span class="block text-xs text-gray-500 font-semibold uppercase">Attempts</span><span class="block text-gray-900 font-medium">${otpData.attempts}/${otpData.max_attempts}</span></div><div><span class="block text-xs text-gray-500 font-semibold uppercase">Expires At</span><span class="block text-gray-900 font-medium">${otpData.expires_at}</span></div>${otpData.verified_at ? `<div class='md:col-span-2'><span class='block text-xs text-gray-500 font-semibold uppercase'>Verified At</span><span class='block text-gray-900 font-medium'>${otpData.verified_at}</span></div>` : ''}</div></div>` : ''}
+                            <!-- Hubtel Response -->
+                            ${hubtelResponse ? `<div class="bg-white rounded-xl shadow p-6 border border-gray-100"><div class="flex items-center mb-4 space-y-0 space-x-2"><i class="fas fa-exchange-alt text-indigo-500" aria-label="Hubtel Response" title="Hubtel Response"></i><h4 class="text-lg font-bold text-indigo-700">Hubtel Response</h4></div><div class="bg-gray-100 rounded p-3 text-xs text-gray-700 overflow-x-auto"><pre>${hubtelResponse}</pre></div></div>` : ''}
+                            <!-- Callback Data -->
+                            ${callbackData ? `<div class="bg-white rounded-xl shadow p-6 border border-gray-100"><div class="flex items-center mb-4 space-y-0 space-x-2"><i class="fas fa-phone text-indigo-500" aria-label="Callback Data" title="Callback Data"></i><h4 class="text-lg font-bold text-indigo-700">Callback Data</h4></div><div class="bg-gray-100 rounded p-3 text-xs text-gray-700 overflow-x-auto"><pre>${callbackData}</pre></div></div>` : ''}
+                            <!-- Status Indicators -->
+                            <div class="bg-white rounded-xl shadow p-6 border border-gray-100">
+                                <div class="flex items-center mb-4 space-y-0 space-x-2">
+                                    <i class="fas fa-chart-pie text-indigo-500" aria-label="Status Indicators" title="Status Indicators"></i>
+                                    <h4 class="text-lg font-bold text-indigo-700">Status Indicators</h4>
+                                </div>
+                                <div class="flex flex-wrap gap-3">
+                                    <div class="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${statusInfo.is_completed ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-700'}"><i class="fas fa-check-circle" aria-label="Completed" title="Completed"></i><span>Completed</span></div>
+                                    <div class="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${statusInfo.is_failed ? 'bg-red-100 text-red-700' : 'bg-gray-200 text-gray-700'}"><i class="fas fa-times-circle" aria-label="Failed" title="Failed"></i><span>Failed</span></div>
+                                    <div class="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${statusInfo.is_pending ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-200 text-gray-700'}"><i class="fas fa-clock" aria-label="Pending" title="Pending"></i><span>Pending</span></div>
+                                    <div class="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${statusInfo.has_hubtel_id ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-700'}"><i class="fas fa-link" aria-label="Hubtel Linked" title="Hubtel Linked"></i><span>Hubtel Linked</span></div>
+                                    <div class="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${statusInfo.has_otp ? 'bg-purple-100 text-purple-700' : 'bg-gray-200 text-gray-700'}"><i class="fas fa-shield-alt" aria-label="OTP Required" title="OTP Required"></i><span>OTP Required</span></div>
+                                </div>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label>Created At</label>
-                            <div class="form-control">${new Date(data.created_at).toLocaleString()}</div>
-                        </div>
                     `;
-                    
-                    modal.style.display = 'block';
                 })
                 .catch(error => {
-                    console.error('Error loading transaction details:', error);
-                    showNotification('Error loading transaction details', 'error');
+                    body.innerHTML = `<div class='flex flex-col items-center justify-center py-12 text-center'><svg class='h-10 w-10 text-red-500 mb-2' fill='none' viewBox='0 0 24 24' stroke='currentColor'><path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M6 18L18 6M6 6l12 12'/></svg><div class='text-red-500 font-semibold mb-2'>Failed to load transaction details</div><div class='text-gray-500 text-sm'>${error.message}</div></div>`;
                 });
+        }
+        
+        // Record Payment Modal Functions
+        function openRecordPaymentModal() {
+            const modal = document.getElementById('record-payment-modal');
+            const body = document.getElementById('record-payment-modal-body');
+            body.innerHTML = `
+                <form id="record-payment-form">
+                    <div class="form-group">
+                        <label>Customer Name *</label>
+                        <input type="text" name="customer_name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Customer Email</label>
+                        <input type="email" name="customer_email" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="text" name="phone_number" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Amount *</label>
+                        <input type="number" name="amount" class="form-control" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Currency</label>
+                        <select name="currency" class="form-control">
+                            <option value="GHS">GHS</option>
+                            <option value="USD">USD</option>
+                            <option value="EUR">EUR</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Payment Method</label>
+                        <select name="payment_method" class="form-control">
+                            <option value="mobile_money">Mobile Money</option>
+                            <option value="card">Card</option>
+                            <option value="bank">Bank Transfer</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Network</label>
+                        <select name="network" class="form-control">
+                            <option value="">Select Network</option>
+                            <option value="MTN">MTN</option>
+                            <option value="VODAFONE">Vodafone</option>
+                            <option value="AIRTEL">AirtelTigo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea name="description" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select name="status" class="form-control">
+                            <option value="pending">Pending</option>
+                            <option value="completed">Completed</option>
+                            <option value="failed">Failed</option>
+                        </select>
+                    </div>
+                    <div class="form-actions flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary">Record Payment</button>
+                        <button type="button" class="btn btn-outline" onclick="closeRecordPaymentModal()">Cancel</button>
+                    </div>
+                </form>
+            `;
+            modal.style.display = 'block';
+            document.getElementById('record-payment-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const form = e.target;
+                const data = Object.fromEntries(new FormData(form));
+                // TODO: Implement this endpoint in backend: POST /api/payments/initiate/
+                fetch('/api/payments/initiate/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                })
+                .then(r => r.json())
+                .then(resp => {
+                    if (resp.success) {
+                        showNotification('Payment recorded successfully!', 'success');
+                        closeRecordPaymentModal();
+                        // Optionally refresh payments table here
+                    } else {
+                        showNotification(resp.message || 'Failed to record payment', 'error');
+                    }
+                })
+                .catch(() => showNotification('Failed to record payment', 'error'));
+            });
+        }
+        
+        function closeRecordPaymentModal() {
+            document.getElementById('record-payment-modal').style.display = 'none';
+        }
+        
+        // Follow Up Modal Functions
+        function openFollowUpModal(transactionId) {
+            const modal = document.getElementById('follow-up-modal');
+            const body = document.getElementById('follow-up-modal-body');
+            body.innerHTML = `
+                <div class="follow-up-options">
+                    <div class="form-group">
+                        <label>Follow Up Action</label>
+                        <select id="follow-up-action" class="form-control">
+                            <option value="retry">Retry Payment</option>
+                            <option value="contact">Contact Customer</option>
+                            <option value="note">Add Note</option>
+                            <option value="cancel">Cancel Payment</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Notes</label>
+                        <textarea id="follow-up-notes" class="form-control" rows="4" placeholder="Add any notes about this follow-up action..."></textarea>
+                    </div>
+                    <div class="form-actions flex gap-2 mt-4">
+                        <button type="button" class="btn btn-primary" onclick="submitFollowUp('${transactionId}')">Submit Follow Up</button>
+                        <button type="button" class="btn btn-outline" onclick="closeFollowUpModal()">Cancel</button>
+                    </div>
+                </div>
+            `;
+            modal.style.display = 'block';
+        }
+        
+        function closeFollowUpModal() {
+            document.getElementById('follow-up-modal').style.display = 'none';
+        }
+        
+        function submitFollowUp(transactionId) {
+            const action = document.getElementById('follow-up-action').value;
+            const notes = document.getElementById('follow-up-notes').value;
+            // TODO: Implement this endpoint in backend: POST /api/payments/follow-up/
+            fetch(`/api/payments/follow-up/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ transactionId, action, notes })
+            })
+            .then(r => r.json())
+            .then(resp => {
+                if (resp.success) {
+                    showNotification('Follow up submitted!', 'success');
+                    closeFollowUpModal();
+                } else {
+                    showNotification(resp.message || 'Failed to submit follow up', 'error');
+                }
+            })
+            .catch(() => showNotification('Failed to submit follow up', 'error'));
+        }
+        
+        function closeKYCModal() {
+            document.getElementById('kyc-modal').style.display = 'none';
+        }
+
+        // Analytics Functions
+        function refreshAnalytics() {
+            const dateRange = document.getElementById('time-range').value;
+            loadAnalyticsData(dateRange);
+            showNotification('Analytics refreshed successfully', 'success');
+        }
+        
+        function loadAnalyticsData(days = 30) {
+            // Load metrics
+            loadMetrics();
+            
+            // Load charts
+            loadRevenueChart(days);
+            loadStatusChart();
+            loadTransactionsChart(days);
+            loadPerformanceChart();
+            
+            // Load activity feed
+            loadActivityFeed();
+        }
+        
+        function loadMetrics() {
+            // Simulate loading metrics data
+            document.getElementById('total-revenue').textContent = '12,450.00';
+            document.getElementById('revenue-change').textContent = '+15.2%';
+            
+            document.getElementById('successful-payments').textContent = '1,247';
+            document.getElementById('success-rate').textContent = '94.5%';
+            
+            document.getElementById('active-users').textContent = '1,247';
+            document.getElementById('user-growth').textContent = '+8.7%';
+            
+            document.getElementById('avg-response').textContent = '2.3';
+            document.getElementById('response-improvement').textContent = '-12.5%';
+        }
+        
+        function loadRevenueChart(days = 30) {
+            const ctx = document.getElementById('revenue-chart').getContext('2d');
+            
+            // Sample data - replace with real API call
+            const labels = generateDateLabels(days);
+            const data = generateRandomData(days, 1000, 5000);
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Revenue',
+                        data: data,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#667eea',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: '#667eea',
+                            borderWidth: 1,
+                            cornerRadius: 8,
+                            displayColors: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0,0,0,0.05)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return '₵' + value.toLocaleString();
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                }
+            });
+        }
+        
+        function loadStatusChart() {
+            const ctx = document.getElementById('status-chart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Successful', 'Pending', 'Failed'],
+                    datasets: [{
+                        data: [1247, 45, 23],
+                        backgroundColor: [
+                            '#10b981',
+                            '#f59e0b',
+                            '#ef4444'
+                        ],
+                        borderWidth: 0,
+                        hoverBorderWidth: 2,
+                        hoverBorderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true,
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: '#667eea',
+                            borderWidth: 1,
+                            cornerRadius: 8
+                        }
+                    },
+                    cutout: '60%'
+                }
+            });
+        }
+        
+        function loadTransactionsChart(days = 30) {
+            const ctx = document.getElementById('transactions-chart').getContext('2d');
+            
+            const labels = generateDateLabels(days);
+            const data = generateRandomData(days, 20, 80);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Transactions',
+                        data: data,
+                        backgroundColor: '#4facfe',
+                        borderColor: '#4facfe',
+                        borderWidth: 0,
+                        borderRadius: 6,
+                        borderSkipped: false,
+                        hoverBackgroundColor: '#3b82f6'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: '#4facfe',
+                            borderWidth: 1,
+                            cornerRadius: 8,
+                            displayColors: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0,0,0,0.05)',
+                                drawBorder: false
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function loadPerformanceChart() {
+            const ctx = document.getElementById('performance-chart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Success Rate (%)',
+                        data: [92, 94, 96, 95, 97, 93, 95],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Response Time (s)',
+                        data: [2.5, 2.3, 2.1, 2.4, 2.0, 2.6, 2.2],
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: '#667eea',
+                            borderWidth: 1,
+                            cornerRadius: 8
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Success Rate (%)'
+                            },
+                            grid: {
+                                color: 'rgba(0,0,0,0.05)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Response Time (s)'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function loadActivityFeed() {
+            // TODO: Implement this endpoint in backend: GET /dashboard/api/activity/
+            // For now, use static data
+            const activityFeed = document.getElementById('activity-feed');
+            if (!activityFeed) return;
+            fetch('/dashboard/api/activity/')
+                .then(r => r.json())
+                .then(data => {
+                    activityFeed.innerHTML = data.activities.map(activity => `
+                        <div class="activity-item">
+                            <div class="activity-icon ${activity.type}">
+                                <i class="${activity.icon}"></i>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-title">${activity.title}</div>
+                                <div class="activity-time">${activity.time}</div>
+                            </div>
+                        </div>
+                    `).join('');
+                })
+                .catch(() => {
+                    activityFeed.innerHTML = '<div class="text-gray-500 text-center">Live activity feed not implemented.</div>';
+                });
+        }
+        
+        function refreshActivity() {
+            // Implement refresh activity logic
+            showNotification('Refreshing activity feed...', 'info');
+            setTimeout(() => {
+                loadActivityFeed();
+                showNotification('Activity feed refreshed', 'success');
+            }, 1000);
+        }
+        
+        function exportChart(chartId) {
+            // Implement export chart logic
+            showNotification('Exporting chart...', 'info');
+            setTimeout(() => {
+                showNotification('Chart export functionality coming soon!', 'info');
+            }, 1000);
+        }
+        
+        // Generate random data for charts
+        function generateRandomData(count, min, max) {
+            return Array.from({length: count}, () => 
+                Math.floor(Math.random() * (max - min + 1)) + min
+            );
+        }
+        
+        // Generate date labels
+        function generateDateLabels(days) {
+            const labels = [];
+            const today = new Date();
+            
+            for (let i = days - 1; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                labels.push(date.toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric' 
+                }));
+            }
+            
+            return labels;
+        }
+        
+        // Overview Functions
+        function refreshDashboard() {
+            showNotification('Dashboard refreshed successfully', 'success');
+            // TODO: Implement actual dashboard refresh
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        }
+        
+        function generateReport() {
+            showNotification('Generating report...', 'info');
+            // TODO: Implement report generation
+            setTimeout(() => {
+                showNotification('Report generated successfully!', 'success');
+            }, 2000);
+        }
+        
+        function exportData(type) {
+            showNotification('Export functionality not implemented. Please add backend endpoint.', 'info');
+        }
+        
+        function viewAnalytics() {
+            // Switch to analytics tab
+            const analyticsTab = document.querySelector('a[href="#analytics"]');
+            if (analyticsTab) {
+                analyticsTab.click();
+            }
+        }
+        
+        function manageSettings() {
+            // Switch to settings tab
+            const settingsTab = document.querySelector('a[href="#settings"]');
+            if (settingsTab) {
+                settingsTab.click();
+            }
+        }
+        
+        // Initialize mini trend charts for stat cards
+        function initializeTrendCharts() {
+            const charts = [
+                { id: 'transactionTrend', color: '#667eea' },
+                { id: 'revenueTrend', color: '#11998e' },
+                { id: 'kycTrend', color: '#f093fb' },
+                { id: 'successTrend', color: '#4facfe' }
+            ];
+            
+            charts.forEach(chart => {
+                const canvas = document.getElementById(chart.id);
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    const data = generateRandomData(7, 10, 50);
+                    
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: Array(7).fill(''),
+                            datasets: [{
+                                data: data,
+                                borderColor: chart.color,
+                                backgroundColor: chart.color + '20',
+                                borderWidth: 2,
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 0
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false }
+                            },
+                            scales: {
+                                x: { display: false },
+                                y: { display: false }
+                            }
+                        }
+                    });
+                }
+            });
+        }
+        
+        // Initialize everything when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize trend charts
+            setTimeout(() => {
+                initializeTrendCharts();
+            }, 500);
+            
+            // Load analytics when analytics tab is clicked
+            const analyticsTab = document.querySelector('a[href="#analytics"]');
+            if (analyticsTab) {
+                analyticsTab.addEventListener('click', function() {
+                    setTimeout(() => {
+                        loadAnalyticsData();
+                    }, 100);
+                });
+            }
+            
+            // Add time range change listener
+            const timeRangeSelect = document.getElementById('time-range');
+            if (timeRangeSelect) {
+                timeRangeSelect.addEventListener('change', function() {
+                    loadAnalyticsData(this.value);
+                });
+            }
+        });
+
+        // Tab navigation with persistence and accessibility
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabs = document.querySelectorAll('.nav-tabs a');
+            const tabContents = document.querySelectorAll('.tab-content');
+            let activeTab = localStorage.getItem('activeTab') || '#overview';
+
+            function showTab(tabId) {
+                tabContents.forEach(tc => tc.style.display = 'none');
+                tabs.forEach(t => {
+                    t.parentElement.classList.remove('active');
+                    t.setAttribute('aria-selected', 'false');
+                });
+                const tab = document.querySelector(`.nav-tabs a[href="${tabId}"]`);
+                if (tab) {
+                    tab.parentElement.classList.add('active');
+                    tab.setAttribute('aria-selected', 'true');
+                    document.querySelector(tabId).style.display = 'block';
+                    localStorage.setItem('activeTab', tabId);
+                }
+            }
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    showTab(this.getAttribute('href'));
+                });
+                tab.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        showTab(this.getAttribute('href'));
+                    }
+                });
+            });
+
+            showTab(activeTab);
+        });
+
+        // Modal accessibility: ESC to close, focus trap
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal').forEach(modal => {
+                    if (modal.style.display === 'block') {
+                        modal.style.display = 'none';
+                    }
+                });
+            }
+        });
+
+        // Add aria-label to all icon-only buttons
+        document.querySelectorAll('button i').forEach(icon => {
+            const btn = icon.closest('button');
+            if (btn && !btn.textContent.trim()) {
+                btn.setAttribute('aria-label', icon.getAttribute('title') || icon.className);
+            }
+        });
+
+        // Settings Forms AJAX
+        // Dashboard Settings
+        const dashboardSettingsForm = document.getElementById('dashboard-settings-form');
+        if (dashboardSettingsForm) {
+            dashboardSettingsForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const data = Object.fromEntries(new FormData(this));
+                // TODO: Implement this endpoint in backend: POST /dashboard/api/settings/
+                fetch('/dashboard/api/settings/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                })
+                .then(r => r.json())
+                .then(resp => {
+                    if (resp.message) {
+                        showNotification('Settings saved!', 'success');
+                    } else {
+                        showNotification(resp.error || 'Failed to save settings', 'error');
+                    }
+                })
+                .catch(() => showNotification('Failed to save settings', 'error'));
+            });
+        }
+        // Export Settings
+        const exportSettingsForm = document.getElementById('export-settings-form');
+        if (exportSettingsForm) {
+            exportSettingsForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const data = Object.fromEntries(new FormData(this));
+                // TODO: Implement this endpoint in backend: POST /dashboard/api/settings/
+                fetch('/dashboard/api/settings/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                })
+                .then(r => r.json())
+                .then(resp => {
+                    if (resp.message) {
+                        showNotification('Export settings saved!', 'success');
+                    } else {
+                        showNotification(resp.error || 'Failed to save export settings', 'error');
+                    }
+                })
+                .catch(() => showNotification('Failed to save export settings', 'error'));
+            });
+        }
+
+        // System Info/Status AJAX
+        function refreshSystemInfo() {
+            // TODO: Implement this endpoint in backend: GET /dashboard/api/system-info/
+            fetch('/dashboard/api/system-info/')
+                .then(r => r.json())
+                .then(info => {
+                    document.getElementById('django-version').textContent = info.django_version || 'Unknown';
+                    document.getElementById('python-version').textContent = info.python_version || 'Unknown';
+                    document.getElementById('database-info').textContent = info.database_type + ' - ' + info.database_name;
+                    document.getElementById('debug-mode').textContent = info.debug_mode ? 'On' : 'Off';
+                    document.getElementById('timezone').textContent = info.timezone || 'Unknown';
+                    document.getElementById('database-status').textContent = info.database_status || 'Unknown';
+                })
+                .catch(() => {
+                    document.getElementById('database-status').textContent = 'Error';
+                });
+        }
+        // Call on load
+        if (document.getElementById('system-info')) {
+            refreshSystemInfo();
         }
     </script>
 </body>

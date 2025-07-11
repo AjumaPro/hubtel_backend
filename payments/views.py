@@ -128,7 +128,7 @@ def initiate_payment_legacy(request):
         
         # Generate reference automatically if not provided
         if 'reference' in request.data:
-        reference = request.data['reference']
+            reference = request.data['reference']
         else:
             reference = generate_payment_reference()
         

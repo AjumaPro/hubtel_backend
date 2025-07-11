@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from payments.models import PaymentTransaction
+from payments.models import PaymentTransaction, OTPVerification
 from kyc.models import KYCSubmission
 from datetime import datetime, timedelta
 import json
@@ -18,6 +18,9 @@ def dashboard_view(request):
     
     # Calculate basic stats
     total_payments = PaymentTransaction.objects.count()
+    successful_payments = PaymentTransaction.objects.filter(status='completed').count()
+    failed_payments = PaymentTransaction.objects.filter(status='failed').count()
+    pending_payments = PaymentTransaction.objects.filter(status__in=['pending', 'processing']).count()
     total_kyc = KYCSubmission.objects.count()
     successful_kyc = KYCSubmission.objects.filter(status='SUCCESS').count()
     failed_kyc = KYCSubmission.objects.filter(status='FAILED').count()
@@ -26,6 +29,9 @@ def dashboard_view(request):
         'recent_payments': recent_payments,
         'recent_kyc_submissions': recent_kyc_submissions,
         'total_payments': total_payments,
+        'successful_payments': successful_payments,
+        'failed_payments': failed_payments,
+        'pending_payments': pending_payments,
         'total_kyc': total_kyc,
         'successful_kyc': successful_kyc,
         'failed_kyc': failed_kyc,
@@ -82,6 +88,85 @@ def dashboard_stats(request):
                 ]
             }
         })
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+def transaction_details(request, transaction_id):
+    """Get detailed transaction information"""
+    try:
+        transaction = PaymentTransaction.objects.get(id=transaction_id)
+        
+        # Get OTP verification data if exists
+        otp_data = None
+        try:
+            otp_verification = OTPVerification.objects.filter(transaction=transaction).first()
+            if otp_verification:
+                otp_data = {
+                    'otp_id': str(otp_verification.otp_id),
+                    'status': otp_verification.status,
+                    'attempts': otp_verification.attempts,
+                    'max_attempts': otp_verification.max_attempts,
+                    'created_at': otp_verification.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'expires_at': otp_verification.expires_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'verified_at': otp_verification.verified_at.strftime('%Y-%m-%d %H:%M:%S') if otp_verification.verified_at else None,
+                    'is_expired': otp_verification.is_expired(),
+                }
+        except Exception:
+            pass
+        
+        # Calculate time differences
+        created_time = transaction.created_at
+        updated_time = transaction.updated_at
+        completed_time = transaction.completed_at
+        
+        processing_duration = None
+        if completed_time and created_time:
+            processing_duration = (completed_time - created_time).total_seconds()
+        
+        # Format Hubtel response for display
+        hubtel_response_formatted = None
+        if transaction.hubtel_response:
+            hubtel_response_formatted = json.dumps(transaction.hubtel_response, indent=2)
+        
+        callback_data_formatted = None
+        if transaction.callback_data:
+            callback_data_formatted = json.dumps(transaction.callback_data, indent=2)
+        
+        return Response({
+            'transaction': {
+                'id': transaction.id,
+                'transaction_id': str(transaction.transaction_id),
+                'reference': transaction.reference,
+                'amount': str(transaction.amount),
+                'currency': transaction.currency,
+                'payment_method': transaction.payment_method,
+                'phone_number': transaction.phone_number,
+                'network': transaction.network,
+                'status': transaction.status,
+                'hubtel_transaction_id': transaction.hubtel_transaction_id,
+                'customer_name': transaction.customer_name,
+                'customer_email': transaction.customer_email,
+                'description': transaction.description,
+                'created_at': transaction.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'updated_at': transaction.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'completed_at': transaction.completed_at.strftime('%Y-%m-%d %H:%M:%S') if transaction.completed_at else None,
+                'processing_duration_seconds': processing_duration,
+                'processing_duration_formatted': f"{processing_duration:.1f} seconds" if processing_duration else None,
+            },
+            'otp_data': otp_data,
+            'hubtel_response': hubtel_response_formatted,
+            'callback_data': callback_data_formatted,
+            'status_info': {
+                'is_completed': transaction.status == 'completed',
+                'is_failed': transaction.status == 'failed',
+                'is_pending': transaction.status in ['pending', 'processing'],
+                'has_hubtel_id': bool(transaction.hubtel_transaction_id),
+                'has_otp': bool(otp_data),
+            }
+        })
+    except PaymentTransaction.DoesNotExist:
+        return Response({'error': 'Transaction not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -184,11 +269,50 @@ def system_info(request):
     try:
         from django.conf import settings
         import platform
+        from django.db import connection
+        
+        # Get database information
+        db_engine = settings.DATABASES['default']['ENGINE']
+        db_name_raw = settings.DATABASES['default'].get('NAME', 'Unknown')
+        # Convert PosixPath to string if needed
+        db_name = str(db_name_raw) if db_name_raw else 'Unknown'
+        
+        # Determine database type and status
+        if 'postgresql' in db_engine:
+            db_type = 'PostgreSQL'
+            try:
+                # Test database connection
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT version();")
+                    db_version = cursor.fetchone()[0]
+                db_status = 'Connected'
+            except Exception as e:
+                db_status = f'Error: {str(e)}'
+                db_version = 'Unknown'
+        elif 'sqlite' in db_engine:
+            db_type = 'SQLite'
+            try:
+                # Test database connection
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT sqlite_version();")
+                    db_version = cursor.fetchone()[0]
+                db_status = 'Connected'
+            except Exception as e:
+                db_status = f'Error: {str(e)}'
+                db_version = 'Unknown'
+        else:
+            db_type = 'Unknown'
+            db_status = 'Unknown'
+            db_version = 'Unknown'
         
         info = {
             'django_version': '4.2.0',  # You can get this dynamically
             'python_version': platform.python_version(),
-            'database': settings.DATABASES['default']['ENGINE'],
+            'database_engine': db_engine,
+            'database_type': db_type,
+            'database_name': db_name,
+            'database_version': db_version,
+            'database_status': db_status,
             'debug_mode': settings.DEBUG,
             'timezone': settings.TIME_ZONE,
             'static_url': settings.STATIC_URL,

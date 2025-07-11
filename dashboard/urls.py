@@ -7,4 +7,5 @@ urlpatterns = [
     path('api/analytics/', views.analytics_data, name='analytics-data'),
     path('api/settings/', views.settings_view, name='settings'),
     path('api/system-info/', views.system_info, name='system-info'),
+    path('api/transaction/<int:transaction_id>/', views.transaction_details, name='transaction-details'),
 ] 
