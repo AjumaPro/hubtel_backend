@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 import uuid
+from django.contrib.auth.hashers import make_password, check_password
 
 class PaymentTransaction(models.Model):
     """Model to store payment transaction details"""
@@ -52,6 +53,12 @@ class PaymentTransaction(models.Model):
         ordering = ['-created_at']
         verbose_name = 'Payment Transaction'
         verbose_name_plural = 'Payment Transactions'
+        indexes = [
+            models.Index(fields=['reference']),
+            models.Index(fields=['status']),
+            models.Index(fields=['created_at']),
+            models.Index(fields=['hubtel_transaction_id']),
+        ]
     
     def __str__(self):
         return f"{self.reference} - {self.amount} {self.currency}"
@@ -99,6 +106,11 @@ class OTPVerification(models.Model):
         ordering = ['-created_at']
         verbose_name = 'OTP Verification'
         verbose_name_plural = 'OTP Verifications'
+        indexes = [
+            models.Index(fields=['transaction']),
+            models.Index(fields=['status']),
+            models.Index(fields=['expires_at']),
+        ]
     
     def __str__(self):
         return f"OTP for {self.transaction.reference}"
@@ -119,3 +131,31 @@ class OTPVerification(models.Model):
         self.status = 'verified'
         self.verified_at = timezone.now()
         self.save()
+
+class User(models.Model):
+    phone = models.CharField(max_length=20, unique=True)
+    email = models.EmailField(unique=True)
+    account_id = models.CharField(max_length=50, unique=True)
+    password = models.CharField(max_length=128)  # hashed
+    is_verified = models.BooleanField(default=False)
+    otp = models.CharField(max_length=6, blank=True, null=True)
+    otp_created_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def set_password(self, raw_password):
+        self.password = make_password(raw_password)
+        self.save()
+
+    def check_password(self, raw_password):
+        return check_password(raw_password, self.password)
+
+    def __str__(self):
+        return f"{self.phone} ({self.email})"
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['phone']),
+            models.Index(fields=['email']),
+            models.Index(fields=['account_id']),
+        ]

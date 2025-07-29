@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .views import RegisterView, VerifyOTPView, SetPasswordView, VerifyPasswordView
 
 app_name = 'payments'
 
@@ -19,6 +20,11 @@ urlpatterns = [
     path('check-transaction/<str:reference>/', views.check_transaction, name='check_transaction'),
     path('send-sms/', views.send_sms, name='send_sms'),
     path('transaction/<int:transaction_id>/', views.transaction_detail, name='transaction-detail'),
+    path('follow-up/', views.follow_up_payment, name='follow-up-payment'),
     path('export/excel/', views.PaymentExportExcelView.as_view(), name='payment-export-excel'),
     path('export/pdf/', views.PaymentExportPDFView.as_view(), name='payment-export-pdf'),
+    path('register/', RegisterView.as_view(), name='register'),
+    path('verify-otp-auth/', VerifyOTPView.as_view(), name='verify-otp-auth'),
+    path('set-password/', SetPasswordView.as_view(), name='set-password'),
+    path('verify-password/', VerifyPasswordView.as_view(), name='verify-password'),
 ] 

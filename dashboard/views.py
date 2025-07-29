@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from payments.models import PaymentTransaction, OTPVerification
+from payments.models import PaymentTransaction, OTPVerification, User
 from kyc.models import KYCSubmission
 from datetime import datetime, timedelta
 import json
@@ -88,8 +88,10 @@ def dashboard_stats(request):
                 ]
             }
         })
+    except (ValueError, TypeError) as e:
+        return Response({'error': 'Invalid data format'}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({'error': 'Internal server error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
 def transaction_details(request, transaction_id):
@@ -167,8 +169,10 @@ def transaction_details(request, transaction_id):
         })
     except PaymentTransaction.DoesNotExist:
         return Response({'error': 'Transaction not found'}, status=status.HTTP_404_NOT_FOUND)
+    except (ValueError, TypeError) as e:
+        return Response({'error': 'Invalid data format'}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({'error': 'Internal server error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
 def analytics_data(request):
@@ -319,5 +323,54 @@ def system_info(request):
             'media_url': settings.MEDIA_URL
         }
         return Response(info)
+    except (ValueError, TypeError) as e:
+        return Response({'error': 'Invalid data format'}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
+        return Response({'error': 'Internal server error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+def user_registrations_view(request):
+    users = User.objects.all().order_by('-created_at')
+    return render(request, 'dashboard/user_registrations.html', {'users': users})
+
+@api_view(['GET'])
+def activity_feed(request):
+    """Get recent activity feed"""
+    try:
+        # Get recent payments
+        recent_payments = PaymentTransaction.objects.all().order_by('-created_at')[:10]
+        recent_kyc = KYCSubmission.objects.all().order_by('-submitted_at')[:10]
+        
+        activities = []
+        
+        # Add payment activities
+        for payment in recent_payments:
+            activities.append({
+                'type': 'payment',
+                'id': payment.id,
+                'title': f'Payment {payment.reference}',
+                'description': f'{payment.customer_name} - {payment.currency} {payment.amount}',
+                'status': payment.status,
+                'timestamp': payment.created_at.isoformat(),
+                'icon': 'credit-card'
+            })
+        
+        # Add KYC activities
+        for kyc in recent_kyc:
+            activities.append({
+                'type': 'kyc',
+                'id': kyc.id,
+                'title': f'KYC Submission #{kyc.id}',
+                'description': f'Status: {kyc.status}',
+                'status': kyc.status,
+                'timestamp': kyc.submitted_at.isoformat(),
+                'icon': 'user-check'
+            })
+        
+        # Sort by timestamp
+        activities.sort(key=lambda x: x['timestamp'], reverse=True)
+        
+        return Response({
+            'activities': activities[:20]  # Return top 20 activities
+        })
+    except Exception as e:
+        return Response({'error': 'Internal server error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 

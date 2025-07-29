@@ -16,11 +16,12 @@ class HubtelService:
         self.client_id = config('HUBTEL_APPID', default=settings.HUBTEL_CONFIG.get('CLIENT_ID'))
         self.client_secret = config('HUBTEL_API_KEY', default=settings.HUBTEL_CONFIG.get('CLIENT_SECRET'))
         self.merchant_account_number = config('HUBTEL_MERCHANT_ACCOUNT', default='2020274')
-        self.base_url = 'https://payproxyapi.hubtel.com'
+        self.base_url = config('HUBTEL_API_BASE_URL', default='https://payproxyapi.hubtel.com')
         self.status_url = 'https://api-txnstatus.hubtel.com'
         self.callback_url = config('HUBTEL_CALLBACK', default=settings.HUBTEL_CONFIG.get('CALLBACK_URL'))
         self.return_url = config('HUBTEL_RETURN_URL', default=settings.HUBTEL_CONFIG.get('RETURN_URL'))
         self.cancellation_url = config('HUBTEL_CANCELLATION', default='https://glicocapital.com/?cancel')
+        self.mock_mode = config('HUBTEL_MOCK_MODE', default=True, cast=bool)
     
     def _get_auth_header(self):
         """Generate Basic Auth header for Hubtel API"""
@@ -30,6 +31,10 @@ class HubtelService:
     
     def _make_request(self, url, method='GET', data=None):
         """Make HTTP request to Hubtel API"""
+        # Check if credentials are configured
+        if not self.client_id or self.client_id == 'your_hubtel_client_id_here':
+            raise Exception("Hubtel credentials not configured. Please set HUBTEL_APPID and HUBTEL_API_KEY in environment variables.")
+        
         headers = {
             'Accept': 'application/json',
             'Authorization': self._get_auth_header(),
@@ -54,6 +59,11 @@ class HubtelService:
     def initiate_payment(self, amount, description, reference, payment_type='initial'):
         """Initiate a payment transaction with Hubtel - matches PHP initiatePayment method"""
         try:
+            # Check if we're in mock mode
+            if self.mock_mode:
+                logger.info(f"Mock mode: Simulating payment initiation for {reference}")
+                return f"https://mock-hubtel.com/checkout/{reference}"
+            
             # Prepare payment data matching PHP structure
             payment_data = {
                 'totalAmount': float(amount),

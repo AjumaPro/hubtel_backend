@@ -14,6 +14,472 @@
     
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        /* Activity Feed Styles */
+        .activity-feed {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .activity-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+            transition: background-color 0.2s;
+        }
+        
+        .activity-item:hover {
+            background-color: #f9fafb;
+        }
+        
+        .activity-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 16px;
+        }
+        
+        .activity-item.payment .activity-icon {
+            background-color: #dbeafe;
+            color: #2563eb;
+        }
+        
+        .activity-item.kyc .activity-icon {
+            background-color: #dcfce7;
+            color: #16a34a;
+        }
+        
+        .activity-content {
+            flex: 1;
+        }
+        
+        .activity-title {
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 4px;
+        }
+        
+        .activity-description {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+        
+        .activity-time {
+            color: #9ca3af;
+            font-size: 12px;
+        }
+        
+        .activity-status {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        
+        .activity-status.success {
+            background-color: #dcfce7;
+            color: #16a34a;
+        }
+        
+        .activity-status.failed {
+            background-color: #fee2e2;
+            color: #dc2626;
+        }
+        
+        .activity-status.pending {
+            background-color: #fef3c7;
+            color: #d97706;
+        }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal-content {
+            background-color: #fff;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #111827;
+        }
+        
+        .modal-body {
+            padding: 24px;
+        }
+        
+        .close {
+            color: #9ca3af;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        
+        .close:hover {
+            color: #6b7280;
+        }
+        
+        /* Transaction Details */
+        .transaction-details, .kyc-details {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 8px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        
+        .detail-item:last-child {
+            border-bottom: none;
+        }
+        
+        .detail-item strong {
+            color: #374151;
+            font-weight: 600;
+            min-width: 100px;
+        }
+        
+        .detail-item pre {
+            background-color: #f9fafb;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            overflow-x: auto;
+            margin-top: 8px;
+        }
+        
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #374151;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        /* Chart Export Buttons */
+        .chart-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+        
+        /* Analytics Grid */
+        .analytics-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            color: white;
+        }
+        
+        .analytics-title h2 {
+            margin: 0 0 8px 0;
+            font-size: 24px;
+            font-weight: 700;
+        }
+        
+        .analytics-title p {
+            margin: 0;
+            opacity: 0.9;
+        }
+        
+        .analytics-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+        
+        .metric-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .metric-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        
+        .metric-card.primary .metric-icon {
+            background-color: #dbeafe;
+            color: #2563eb;
+        }
+        
+        .metric-card.success .metric-icon {
+            background-color: #dcfce7;
+            color: #16a34a;
+        }
+        
+        .metric-card.warning .metric-icon {
+            background-color: #fef3c7;
+            color: #d97706;
+        }
+        
+        .metric-card.info .metric-icon {
+            background-color: #e0e7ff;
+            color: #7c3aed;
+        }
+        
+        .metric-content {
+            flex: 1;
+        }
+        
+        .metric-content h3 {
+            margin: 0 0 8px 0;
+            font-size: 14px;
+            font-weight: 500;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .metric-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 4px;
+        }
+        
+        .metric-change {
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .metric-change.positive {
+            color: #16a34a;
+        }
+        
+        .metric-change.negative {
+            color: #dc2626;
+        }
+        
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+        
+        .chart-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+        
+        .chart-card.large {
+            grid-column: span 2;
+        }
+        
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .chart-header h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+        }
+        
+        .chart-container {
+            height: 300px;
+            position: relative;
+        }
+        
+        .insights-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        
+        .activity-section, .insight-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .section-header h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+        }
+        
+        .insight-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        
+        .insight-item:last-child {
+            border-bottom: none;
+        }
+        
+        .insight-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        
+        .insight-icon.success {
+            background-color: #dcfce7;
+            color: #16a34a;
+        }
+        
+        .insight-icon.warning {
+            background-color: #fef3c7;
+            color: #d97706;
+        }
+        
+        .insight-icon.info {
+            background-color: #dbeafe;
+            color: #2563eb;
+        }
+        
+        .insight-text strong {
+            display: block;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 4px;
+        }
+        
+        .insight-text p {
+            margin: 0;
+            color: #6b7280;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .alert-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 0;
+            font-size: 14px;
+        }
+        
+        .alert-item.warning {
+            color: #d97706;
+        }
+        
+        .alert-item.info {
+            color: #2563eb;
+        }
+        
+        .alert-item.success {
+            color: #16a34a;
+        }
+    </style>
 </head>
 <body>
     <!-- ARIA live region for notifications -->
@@ -55,6 +521,9 @@
             </li>
             <li>
                 <a href="#settings" tabindex="0" aria-controls="settings" aria-selected="false">Settings</a>
+            </li>
+            <li>
+                <a href="/dashboard/user-registrations/" tabindex="0" aria-controls="user-registrations" aria-selected="false">User Registrations</a>
             </li>
         </ul>
     </nav>
@@ -200,15 +669,15 @@
                         </div>
                     </button>
                     
-                    <a href="/admin/" class="action-card" title="Admin Panel">
+                    <button class="action-card" onclick="window.location.href='/dashboard/user-registrations/'">
                         <div class="action-icon">
-                            <i class="fas fa-shield-alt"></i>
+                            <i class="fas fa-users"></i>
                         </div>
                         <div class="action-text">
-                            <h4>Admin Panel</h4>
-                            <p>Manage users and data</p>
+                            <h4>User Registrations</h4>
+                            <p>View and manage user signups</p>
                         </div>
-                    </a>
+                    </button>
                 </div>
             </div>
 
@@ -1213,48 +1682,63 @@
         }
         
         function loadAnalyticsData(days = 30) {
-            // Load metrics
-            loadMetrics();
-            
-            // Load charts
-            loadRevenueChart(days);
-            loadStatusChart();
-            loadTransactionsChart(days);
-            loadPerformanceChart();
+            // Load metrics from API
+            fetch(`/dashboard/api/analytics/?days=${days}`)
+                .then(response => response.json())
+                .then(data => {
+                    loadMetrics(data);
+                    loadRevenueChart(days, data.payments_timeline);
+                    loadStatusChart(data.payment_status_distribution);
+                    loadTransactionsChart(days, data.payments_timeline);
+                    loadPerformanceChart();
+                })
+                .catch(error => {
+                    console.error('Error loading analytics:', error);
+                    showNotification('Failed to load analytics data', 'error');
+                });
             
             // Load activity feed
             loadActivityFeed();
         }
         
-        function loadMetrics() {
-            // Simulate loading metrics data
-            document.getElementById('total-revenue').textContent = '12,450.00';
-            document.getElementById('revenue-change').textContent = '+15.2%';
+        function loadMetrics(data) {
+            // Calculate metrics from API data
+            const payments = data.payments_timeline || [];
+            const totalRevenue = payments.reduce((sum, item) => sum + (item.amount || 0), 0);
+            const successfulPayments = data.payment_status_distribution?.success || 0;
+            const totalPayments = Object.values(data.payment_status_distribution || {}).reduce((a, b) => a + b, 0);
+            const successRate = totalPayments > 0 ? ((successfulPayments / totalPayments) * 100).toFixed(1) : 0;
             
-            document.getElementById('successful-payments').textContent = '1,247';
-            document.getElementById('success-rate').textContent = '94.5%';
+            document.getElementById('total-revenue').textContent = totalRevenue.toLocaleString('en-GH', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+            document.getElementById('revenue-change').textContent = '+15.2%'; // TODO: Calculate from historical data
             
-            document.getElementById('active-users').textContent = '1,247';
+            document.getElementById('successful-payments').textContent = successfulPayments.toLocaleString();
+            document.getElementById('success-rate').textContent = successRate + '%';
+            
+            document.getElementById('active-users').textContent = (successfulPayments * 0.8).toFixed(0);
             document.getElementById('user-growth').textContent = '+8.7%';
             
             document.getElementById('avg-response').textContent = '2.3';
             document.getElementById('response-improvement').textContent = '-12.5%';
         }
         
-        function loadRevenueChart(days = 30) {
+        function loadRevenueChart(days = 30, data = []) {
             const ctx = document.getElementById('revenue-chart').getContext('2d');
             
-            // Sample data - replace with real API call
+            // Use real data if available, otherwise generate sample data
             const labels = generateDateLabels(days);
-            const data = generateRandomData(days, 1000, 5000);
+            const chartData = data.length > 0 ? data.map(item => item.amount || 0) : generateRandomData(days, 1000, 5000);
             
             new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
-                    datasets: [{
-                        label: 'Revenue',
-                        data: data,
+                                            datasets: [{
+                            label: 'Revenue',
+                            data: chartData,
                         borderColor: '#667eea',
                         backgroundColor: 'rgba(102, 126, 234, 0.1)',
                         borderWidth: 3,
@@ -1534,12 +2018,135 @@
             }, 1000);
         }
         
+        function loadActivityFeed() {
+            fetch('/dashboard/api/activity/')
+                .then(response => response.json())
+                .then(data => {
+                    const activityFeed = document.getElementById('activity-feed');
+                    if (activityFeed && data.activities) {
+                        activityFeed.innerHTML = data.activities.map(activity => `
+                            <div class="activity-item ${activity.type}">
+                                <div class="activity-icon">
+                                    <i class="fas fa-${activity.icon}"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <div class="activity-title">${activity.title}</div>
+                                    <div class="activity-description">${activity.description}</div>
+                                    <div class="activity-time">${new Date(activity.timestamp).toLocaleString()}</div>
+                                </div>
+                                <div class="activity-status ${activity.status}">
+                                    ${activity.status}
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading activity feed:', error);
+                    showNotification('Failed to load activity feed', 'error');
+                });
+        }
+        
         function exportChart(chartId) {
             // Implement export chart logic
             showNotification('Exporting chart...', 'info');
             setTimeout(() => {
                 showNotification('Chart export functionality coming soon!', 'info');
             }, 1000);
+        }
+        
+        function loadStatusChart(data = {}) {
+            const ctx = document.getElementById('status-chart').getContext('2d');
+            
+            const chartData = {
+                labels: ['Success', 'Failed', 'Pending'],
+                datasets: [{
+                    data: [
+                        data.success || 0,
+                        data.failed || 0,
+                        data.pending || 0
+                    ],
+                    backgroundColor: ['#10b981', '#ef4444', '#f59e0b'],
+                    borderWidth: 0
+                }]
+            };
+            
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+        
+        function loadTransactionsChart(days = 30, data = []) {
+            const ctx = document.getElementById('transactions-chart').getContext('2d');
+            
+            const labels = generateDateLabels(days);
+            const chartData = data.length > 0 ? data.map(item => item.count || 0) : generateRandomData(days, 5, 50);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Transactions',
+                        data: chartData,
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+        
+        function loadPerformanceChart() {
+            const ctx = document.getElementById('performance-chart').getContext('2d');
+            
+            const data = {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Response Time (ms)',
+                    data: [120, 190, 300, 500, 200, 300, 250],
+                    borderColor: '#8b5cf6',
+                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                    tension: 0.4
+                }]
+            };
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
         }
         
         // Generate random data for charts
@@ -1585,6 +2192,228 @@
         
         function exportData(type) {
             showNotification('Export functionality not implemented. Please add backend endpoint.', 'info');
+        }
+        
+        function viewTransaction(transactionId) {
+            fetch(`/dashboard/api/transaction/${transactionId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    // Create modal to show transaction details
+                    const modal = document.createElement('div');
+                    modal.className = 'modal';
+                    modal.innerHTML = `
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h3>Transaction Details</h3>
+                                <span class="close" onclick="this.parentElement.parentElement.remove()">&times;</span>
+                            </div>
+                            <div class="modal-body">
+                                <div class="transaction-details">
+                                    <div class="detail-item">
+                                        <strong>Reference:</strong> ${data.transaction.reference}
+                                    </div>
+                                    <div class="detail-item">
+                                        <strong>Customer:</strong> ${data.transaction.customer_name}
+                                    </div>
+                                    <div class="detail-item">
+                                        <strong>Amount:</strong> ${data.transaction.currency} ${data.transaction.amount}
+                                    </div>
+                                    <div class="detail-item">
+                                        <strong>Status:</strong> <span class="status ${data.transaction.status}">${data.transaction.status}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <strong>Created:</strong> ${data.transaction.created_at}
+                                    </div>
+                                    ${data.transaction.completed_at ? `<div class="detail-item"><strong>Completed:</strong> ${data.transaction.completed_at}</div>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(modal);
+                    modal.style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Failed to load transaction details', 'error');
+                });
+        }
+        
+        function viewKYC(kycId) {
+            fetch(`/api/kyc/${kycId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    // Create modal to show KYC details
+                    const modal = document.createElement('div');
+                    modal.className = 'modal';
+                    modal.innerHTML = `
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h3>KYC Submission Details</h3>
+                                <span class="close" onclick="this.parentElement.parentElement.remove()">&times;</span>
+                            </div>
+                            <div class="modal-body">
+                                <div class="kyc-details">
+                                    <div class="detail-item">
+                                        <strong>ID:</strong> ${data.id}
+                                    </div>
+                                    <div class="detail-item">
+                                        <strong>Status:</strong> <span class="status ${data.status.toLowerCase()}">${data.status}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <strong>Submitted:</strong> ${data.submitted_at}
+                                    </div>
+                                    ${data.notes ? `<div class="detail-item"><strong>Notes:</strong> ${data.notes}</div>` : ''}
+                                    <div class="detail-item">
+                                        <strong>Data:</strong>
+                                        <pre>${JSON.stringify(data.data, null, 2)}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(modal);
+                    modal.style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Failed to load KYC details', 'error');
+                });
+        }
+        
+        function openFollowUpModal(transactionId) {
+            // Create modal for follow-up actions
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Follow Up Payment</h3>
+                        <span class="close" onclick="this.parentElement.parentElement.parentElement.remove()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <p>Choose an action for transaction #${transactionId}:</p>
+                        <div class="flex gap-2 mt-4">
+                            <button class="btn btn-primary" onclick="followUpPayment(${transactionId}, 'retry')">
+                                <i class="fas fa-redo"></i> Retry Payment
+                            </button>
+                            <button class="btn btn-warning" onclick="followUpPayment(${transactionId}, 'manual')">
+                                <i class="fas fa-tools"></i> Manual Processing
+                            </button>
+                            <button class="btn btn-danger" onclick="followUpPayment(${transactionId}, 'cancel')">
+                                <i class="fas fa-times"></i> Cancel Payment
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            modal.style.display = 'block';
+        }
+        
+        function openRecordPaymentModal() {
+            const modal = document.getElementById('record-payment-modal');
+            const modalBody = document.getElementById('record-payment-modal-body');
+            
+            modalBody.innerHTML = `
+                <form id="record-payment-form">
+                    <div class="form-group">
+                        <label>Customer Name</label>
+                        <input type="text" name="customer_name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Amount</label>
+                        <input type="number" name="amount" class="form-control" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="text" name="phone_number" class="form-control" placeholder="233XXXXXXXXX" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Network</label>
+                        <select name="network" class="form-control" required>
+                            <option value="">Select Network</option>
+                            <option value="MTN">MTN</option>
+                            <option value="Vodafone">Vodafone</option>
+                            <option value="AirtelTigo">AirtelTigo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea name="description" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeRecordPaymentModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Record Payment</button>
+                    </div>
+                </form>
+            `;
+            
+            modal.style.display = 'block';
+            
+            // Add form submission handler
+            document.getElementById('record-payment-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                const data = Object.fromEntries(formData);
+                
+                fetch('/api/payments/initiate/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        showNotification('Payment recorded successfully!', 'success');
+                        closeRecordPaymentModal();
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        showNotification(result.message || 'Failed to record payment', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Failed to record payment', 'error');
+                });
+            });
+        }
+        
+        function closeRecordPaymentModal() {
+            document.getElementById('record-payment-modal').style.display = 'none';
+        }
+        
+        function closeFollowUpModal() {
+            document.getElementById('follow-up-modal').style.display = 'none';
+        }
+        
+        function followUpPayment(transactionId, action) {
+            showNotification(`Processing ${action} for transaction #${transactionId}...`, 'info');
+            
+            fetch('/api/payments/follow-up/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    transaction_id: transactionId,
+                    action: action
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(data.message, 'success');
+                    // Close modal and refresh
+                    document.querySelector('.modal').remove();
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    showNotification(data.message || 'Follow-up failed', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Follow-up error:', error);
+                showNotification('Follow-up failed', 'error');
+            });
         }
         
         function viewAnalytics() {
@@ -1799,6 +2628,142 @@
         if (document.getElementById('system-info')) {
             refreshSystemInfo();
         }
+        
+        function saveDashboardSettings() {
+            const form = document.getElementById('dashboard-settings-form');
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData);
+            
+            fetch('/dashboard/api/settings/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showNotification('Dashboard settings saved successfully!', 'success');
+                } else {
+                    showNotification(result.message || 'Failed to save settings', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Failed to save settings', 'error');
+            });
+        }
+        
+        function saveExportSettings() {
+            const form = document.getElementById('export-settings-form');
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData);
+            
+            fetch('/dashboard/api/settings/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    showNotification('Export settings saved successfully!', 'success');
+                } else {
+                    showNotification(result.message || 'Failed to save settings', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Failed to save settings', 'error');
+            });
+        }
+
+        // Export functionality
+        function handleExport(type, format) {
+            showNotification(`Exporting ${type} data as ${format.toUpperCase()}...`, 'info');
+            
+            let url;
+            if (type === 'payments') {
+                url = `/api/payments/export/${format}/`;
+            } else if (type === 'kyc') {
+                url = `/api/kyc/export/${format}/`;
+            } else {
+                showNotification('Invalid export type', 'error');
+                return;
+            }
+            
+            fetch(url)
+                .then(response => {
+                    if (response.ok) {
+                        return response.blob();
+                    } else {
+                        return response.json().then(data => {
+                            throw new Error(data.message || 'Export failed');
+                        });
+                    }
+                })
+                .then(blob => {
+                    // Create download link
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `${type}_export.${format}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    showNotification(`${type.toUpperCase()} data exported successfully!`, 'success');
+                })
+                .catch(error => {
+                    console.error('Export error:', error);
+                    showNotification(error.message || 'Export failed', 'error');
+                });
+        }
+
+        // Add event listeners to export buttons
+        document.addEventListener('DOMContentLoaded', function() {
+            const exportButtons = document.querySelectorAll('.export-btn');
+            exportButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const type = this.getAttribute('data-type');
+                    const format = this.getAttribute('data-format');
+                    handleExport(type, format);
+                });
+            });
+            
+            // Add event listeners for settings forms
+            const dashboardSettingsForm = document.getElementById('dashboard-settings-form');
+            if (dashboardSettingsForm) {
+                dashboardSettingsForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    saveDashboardSettings();
+                });
+            }
+            
+            const exportSettingsForm = document.getElementById('export-settings-form');
+            if (exportSettingsForm) {
+                exportSettingsForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    saveExportSettings();
+                });
+            }
+            
+            // Initialize analytics on page load
+            if (document.getElementById('analytics').style.display !== 'none') {
+                loadAnalyticsData();
+            }
+            
+            // Initialize activity feed
+            loadActivityFeed();
+        });
+
+        <section class="mt-8">
+          <h2 class="text-xl font-bold mb-4">User Registrations & OTP Management</h2>
+          <div id="user-registrations" class="bg-white rounded shadow p-4">
+            <p>View new user registrations, resend OTP, and manage verification.</p>
+            <button class="btn btn-primary mt-2" onclick="window.location.href='/dashboard/user-registrations/'">View Registrations</button>
+          </div>
+        </section>
     </script>
 </body>
 </html> 

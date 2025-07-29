@@ -15,6 +15,78 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hubtel_project.settings')
 django.setup()
 
 from payments.models import PaymentTransaction, OTPVerification
+from kyc.models import KYCSubmission
+
+def create_test_kyc_data():
+    """Create test KYC submissions with proper timezone handling"""
+    
+    # Check if KYC data already exists
+    if KYCSubmission.objects.exists():
+        print("Test KYC data already exists!")
+        return
+    
+    # Sample KYC data
+    test_kyc_data = [
+        {
+            'data': {
+                'firstName': 'John',
+                'lastName': 'Doe',
+                'email': 'john.doe@example.com',
+                'phone': '233244123456',
+                'dateOfBirth': '1990-05-15',
+                'nationality': 'Ghanaian',
+                'idType': 'Ghana Card',
+                'idNumber': 'GHA-123456789-0'
+            },
+            'status': 'SUCCESS',
+            'notes': 'All documents verified successfully'
+        },
+        {
+            'data': {
+                'firstName': 'Jane',
+                'lastName': 'Smith',
+                'email': 'jane.smith@example.com',
+                'phone': '233244789012',
+                'dateOfBirth': '1985-08-22',
+                'nationality': 'Ghanaian',
+                'idType': 'Passport',
+                'idNumber': 'G12345678'
+            },
+            'status': 'PENDING',
+            'notes': 'Awaiting document verification'
+        },
+        {
+            'data': {
+                'firstName': 'Bob',
+                'lastName': 'Johnson',
+                'email': 'bob.johnson@example.com',
+                'phone': '233244345678',
+                'dateOfBirth': '1992-12-10',
+                'nationality': 'Ghanaian',
+                'idType': 'Driver License',
+                'idNumber': 'DL-123456789'
+            },
+            'status': 'FAILED',
+            'notes': 'Invalid ID document provided'
+        }
+    ]
+    
+    # Create KYC submissions with different timestamps
+    for i, kyc_data in enumerate(test_kyc_data):
+        # Create timezone-aware timestamps
+        submitted_at = timezone.now() - timedelta(days=i, hours=i*2)
+        
+        submission = KYCSubmission.objects.create(
+            user=None,  # Anonymous submission
+            data=kyc_data['data'],
+            status=kyc_data['status'],
+            notes=kyc_data['notes'],
+            submitted_at=submitted_at
+        )
+        
+        print(f"Created KYC submission: {submission.id} - {kyc_data['data']['firstName']} {kyc_data['data']['lastName']}")
+    
+    print(f"\n✅ Created {len(test_kyc_data)} test KYC submissions!")
 
 def create_test_transactions():
     """Create test payment transactions with OTP and Hubtel data"""
@@ -168,7 +240,7 @@ def create_test_transactions():
     
     # Create transactions with different timestamps
     for i, transaction_data in enumerate(test_transactions):
-        # Create transaction with different timestamps
+        # Create transaction with different timestamps using timezone-aware datetimes
         created_at = timezone.now() - timedelta(days=i, hours=i)
         updated_at = created_at + timedelta(minutes=30)
         
@@ -181,8 +253,11 @@ def create_test_transactions():
             updated_at=updated_at
         )
         
-        # Set completed_at if it exists
+        # Set completed_at if it exists (ensure it's timezone-aware)
         if completed_at:
+            # Ensure completed_at is timezone-aware
+            if timezone.is_naive(completed_at):
+                completed_at = timezone.make_aware(completed_at)
             transaction.completed_at = completed_at
             transaction.save()
         
@@ -214,4 +289,5 @@ def create_test_transactions():
     print("You can now test the enhanced transaction details view.")
 
 if __name__ == '__main__':
+    create_test_kyc_data()
     create_test_transactions() 

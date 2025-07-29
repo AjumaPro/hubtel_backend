@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import PaymentTransaction, OTPVerification
+from .models import PaymentTransaction, OTPVerification, User
 
 class PaymentTransactionSerializer(serializers.ModelSerializer):
     """Serializer for PaymentTransaction model"""
@@ -85,4 +85,18 @@ class PaymentStatusResponseSerializer(serializers.Serializer):
     success = serializers.BooleanField()
     message = serializers.CharField()
     data = PaymentTransactionSerializer(required=False)
-    error = serializers.CharField(required=False) 
+    error = serializers.CharField(required=False)
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'phone', 'email', 'account_id', 'is_verified']
+
+class UserRegisterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['phone', 'email', 'account_id']
+
+class UserPasswordSerializer(serializers.Serializer):
+    phone = serializers.CharField()
+    password = serializers.CharField() 

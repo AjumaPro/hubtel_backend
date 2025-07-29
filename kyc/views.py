@@ -17,10 +17,25 @@ class KYCSubmissionView(views.APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
+        # Validate required data
+        if not request.data:
+            return Response({
+                'success': False,
+                'message': 'No data provided'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validate status
+        valid_statuses = ['SUCCESS', 'FAILED', 'PENDING']
+        submission_status = request.data.get('status', 'PENDING')
+        if submission_status not in valid_statuses:
+            return Response({
+                'success': False,
+                'message': f'Invalid status. Must be one of: {", ".join(valid_statuses)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
         # Save KYC data with status and notes
         user = request.user if request.user.is_authenticated else None
         data = request.data.get('data') or request.data
-        submission_status = request.data.get('status', 'PENDING')
         notes = request.data.get('notes', '')
         
         submission = KYCSubmission.objects.create(
@@ -30,6 +45,7 @@ class KYCSubmissionView(views.APIView):
             notes=notes
         )
         return Response({
+            'success': True,
             'id': submission.id, 
             'status': 'saved',
             'submission_status': submission.status
@@ -65,8 +81,10 @@ class KYCExportExcelView(views.APIView):
             )
             response['Content-Disposition'] = 'attachment; filename="kyc_submissions.xlsx"'
             return response
+        except (ValueError, TypeError) as e:
+            return Response({'error': 'Invalid data format'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'error': 'Internal server error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class KYCExportPDFView(views.APIView):
     permission_classes = [AllowAny]
@@ -120,8 +138,10 @@ class KYCExportPDFView(views.APIView):
             response = HttpResponse(buffer, content_type='application/pdf')
             response['Content-Disposition'] = 'attachment; filename="kyc_submissions.pdf"'
             return response
+        except (ValueError, TypeError) as e:
+            return Response({'error': 'Invalid data format'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'error': 'Internal server error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
 def kyc_detail(request, kyc_id):
@@ -154,6 +174,22 @@ class ContactFormSubmissionView(views.APIView):
                         'message': f'Missing required field: {field}'
                     }, status=status.HTTP_400_BAD_REQUEST)
             
+            # Validate email format
+            import re
+            email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            if not re.match(email_pattern, request.data['email']):
+                return Response({
+                    'success': False,
+                    'message': 'Invalid email format'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Validate message length
+            if len(request.data['message']) < 10:
+                return Response({
+                    'success': False,
+                    'message': 'Message must be at least 10 characters long'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
             # Create contact form submission
             submission = ContactFormSubmission.objects.create(
                 name=request.data['name'],
@@ -170,9 +206,15 @@ class ContactFormSubmissionView(views.APIView):
                 }
             }, status=status.HTTP_201_CREATED)
             
+        except (ValueError, TypeError) as e:
+            return Response({
+                'success': False,
+                'message': 'Invalid data provided',
+                'error': 'Data validation failed'
+            }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({
                 'success': False,
                 'message': 'Failed to submit contact form',
-                'error': str(e)
+                'error': 'Internal server error'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

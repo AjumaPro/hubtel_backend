@@ -11,10 +11,16 @@ from django.http import HttpResponse
 import io
 import pandas as pd
 from reportlab.pdfgen import canvas
+import datetime
+import requests
+from django.core.cache import cache
 
-from .models import PaymentTransaction, OTPVerification
+from .models import PaymentTransaction, OTPVerification, User
 from .hubtel_service import HubtelService
-from .serializers import PaymentTransactionSerializer, OTPVerificationSerializer
+from .serializers import PaymentTransactionSerializer, OTPVerificationSerializer, UserSerializer, UserRegisterSerializer, UserPasswordSerializer
+from django.utils.crypto import get_random_string
+from django.contrib.auth.hashers import make_password
+from django.core.mail import send_mail
 
 logger = logging.getLogger(__name__)
 
@@ -22,10 +28,27 @@ def generate_payment_reference(prefix="PAY"):
     """Generate a unique payment reference"""
     return f"{prefix}-{uuid.uuid4().hex[:8].upper()}"
 
+def check_rate_limit(key, limit=10, window=60):
+    """Simple rate limiting function"""
+    current = cache.get(key, 0)
+    if current >= limit:
+        return False
+    cache.set(key, current + 1, window)
+    return True
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def initiate_payment(request):
     """Initiate a payment transaction"""
+    # Rate limiting
+    client_ip = request.META.get('REMOTE_ADDR', 'unknown')
+    rate_limit_key = f"payment_initiate_{client_ip}"
+    if not check_rate_limit(rate_limit_key, limit=5, window=60):
+        return Response({
+            'success': False,
+            'message': 'Rate limit exceeded. Please try again later.'
+        }, status=status.HTTP_429_TOO_MANY_REQUESTS)
+    
     try:
         # Validate request data
         required_fields = ['amount', 'phone_number', 'network', 'customer_name']
@@ -35,6 +58,36 @@ def initiate_payment(request):
                     'success': False,
                     'message': f'Missing required field: {field}'
                 }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validate amount
+        try:
+            amount = float(request.data['amount'])
+            if amount <= 0:
+                return Response({
+                    'success': False,
+                    'message': 'Amount must be greater than 0'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except (ValueError, TypeError):
+            return Response({
+                'success': False,
+                'message': 'Invalid amount format'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validate phone number (Ghana format)
+        phone_number = request.data['phone_number']
+        if not phone_number.startswith('233') and not phone_number.startswith('+233'):
+            return Response({
+                'success': False,
+                'message': 'Phone number must be in Ghana format (233XXXXXXXXX)'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validate network
+        valid_networks = ['MTN', 'Vodafone', 'AirtelTigo']
+        if request.data['network'] not in valid_networks:
+            return Response({
+                'success': False,
+                'message': f'Invalid network. Must be one of: {", ".join(valid_networks)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
         
         # Generate unique reference
         reference = generate_payment_reference()
@@ -101,13 +154,35 @@ def initiate_payment(request):
             }
         }, status=status.HTTP_201_CREATED)
         
-    except Exception as e:
-        logger.error(f"Payment initiation failed: {str(e)}")
+    except (ValueError, TypeError) as e:
+        logger.error(f"Payment initiation validation failed: {str(e)}")
         return Response({
             'success': False,
-            'message': 'Payment initiation failed',
+            'message': 'Invalid payment data provided',
             'error': str(e)
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        }, status=status.HTTP_400_BAD_REQUEST)
+    except requests.RequestException as e:
+        logger.error(f"Hubtel API request failed: {str(e)}")
+        return Response({
+            'success': False,
+            'message': 'Payment service temporarily unavailable',
+            'error': 'Service connection error'
+        }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+    except Exception as e:
+        logger.error(f"Payment initiation failed: {str(e)}")
+        # Check if it's a credentials error
+        if "credentials not configured" in str(e):
+            return Response({
+                'success': False,
+                'message': 'Payment service not configured',
+                'error': 'Please configure Hubtel API credentials in environment variables'
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        else:
+            return Response({
+                'success': False,
+                'message': 'Payment initiation failed',
+                'error': 'Internal server error'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -553,6 +628,125 @@ def generate_reference(request):
             'error': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def follow_up_payment(request):
+    """Follow up on a failed or pending payment"""
+    try:
+        # Validate request data
+        if 'transaction_id' not in request.data:
+            return Response({
+                'success': False,
+                'message': 'Missing transaction_id'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        transaction_id = request.data['transaction_id']
+        action = request.data.get('action', 'retry')  # retry, cancel, or manual
+        
+        # Get transaction
+        try:
+            transaction = PaymentTransaction.objects.get(id=transaction_id)
+        except PaymentTransaction.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Transaction not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Check if transaction can be followed up
+        if transaction.status not in ['failed', 'pending', 'processing']:
+            return Response({
+                'success': False,
+                'message': 'Transaction cannot be followed up'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Initialize Hubtel service
+        hubtel_service = HubtelService()
+        
+        if action == 'retry':
+            # Retry the payment
+            try:
+                # Use the legacy method that matches the HubtelService interface
+                hubtel_response = hubtel_service.initiate_payment(
+                    str(transaction.amount),
+                    transaction.description or 'Payment retry',
+                    transaction.reference,
+                    'retry'
+                )
+                
+                transaction.hubtel_response = hubtel_response
+                transaction.status = 'processing'
+                transaction.save()
+                
+                return Response({
+                    'success': True,
+                    'message': 'Payment retry initiated successfully',
+                    'data': {
+                        'transaction_id': str(transaction.transaction_id),
+                        'reference': transaction.reference,
+                        'status': transaction.status
+                    }
+                }, status=status.HTTP_200_OK)
+                
+            except Exception as e:
+                logger.error(f"Payment retry failed: {str(e)}")
+                # Check if it's a credentials error
+                if "credentials not configured" in str(e):
+                    return Response({
+                        'success': False,
+                        'message': 'Payment retry failed - Hubtel credentials not configured',
+                        'error': 'Please configure Hubtel API credentials in environment variables'
+                    }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+                else:
+                    return Response({
+                        'success': False,
+                        'message': 'Payment retry failed',
+                        'error': str(e)
+                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        elif action == 'cancel':
+            # Cancel the payment
+            transaction.status = 'cancelled'
+            transaction.save()
+            
+            return Response({
+                'success': True,
+                'message': 'Payment cancelled successfully',
+                'data': {
+                    'transaction_id': str(transaction.transaction_id),
+                    'reference': transaction.reference,
+                    'status': transaction.status
+                }
+            }, status=status.HTTP_200_OK)
+        
+        elif action == 'manual':
+            # Mark for manual processing
+            transaction.status = 'processing'
+            transaction.save()
+            
+            return Response({
+                'success': True,
+                'message': 'Payment marked for manual processing',
+                'data': {
+                    'transaction_id': str(transaction.transaction_id),
+                    'reference': transaction.reference,
+                    'status': transaction.status
+                }
+            }, status=status.HTTP_200_OK)
+        
+        else:
+            return Response({
+                'success': False,
+                'message': 'Invalid action'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+    except Exception as e:
+        logger.error(f"Follow-up payment failed: {str(e)}")
+        return Response({
+            'success': False,
+            'message': 'Follow-up payment failed',
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def api_root(request):
@@ -834,3 +1028,81 @@ class PaymentExportPDFView(views.APIView):
             return response
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+def send_sms(phone, message):
+    # Use HubtelService for real SMS
+    HubtelService().send_sms(phone, message)
+
+class RegisterView(views.APIView):
+    def post(self, request):
+        serializer = UserRegisterSerializer(data=request.data)
+        if serializer.is_valid():
+            phone = serializer.validated_data['phone']
+            email = serializer.validated_data['email']
+            account_id = serializer.validated_data['account_id']
+            
+            if User.objects.filter(phone=phone).exists():
+                return Response({'error': 'Phone already registered'}, status=400)
+            if User.objects.filter(email=email).exists():
+                return Response({'error': 'Email already registered'}, status=400)
+            if User.objects.filter(account_id=account_id).exists():
+                return Response({'error': 'Account ID already registered'}, status=400)
+            
+            # Create user without password initially
+            user = User.objects.create(
+                phone=phone, 
+                email=email, 
+                account_id=account_id,
+                password=make_password('')  # Empty password initially
+            )
+            
+            # Generate and send OTP
+            otp = get_random_string(6, allowed_chars='0123456789')
+            user.otp = otp
+            user.otp_created_at = timezone.now()
+            user.save()
+            
+            send_sms(phone, f"Your GLICO registration OTP is: {otp}")
+            return Response({'message': 'Account created. Set your password and verify OTP.'}, status=201)
+        return Response(serializer.errors, status=400)
+
+class VerifyOTPView(views.APIView):
+    def post(self, request):
+        phone = request.data.get('phone')
+        otp = request.data.get('otp')
+        try:
+            user = User.objects.get(phone=phone)
+            if user.otp == otp and user.otp_created_at and (timezone.now() - user.otp_created_at) < datetime.timedelta(minutes=10):
+                user.is_verified = True
+                user.otp = None
+                user.save()
+                return Response({'message': 'OTP verified. You can now set your password.'})
+            return Response({'error': 'Invalid or expired OTP'}, status=400)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=404)
+
+class SetPasswordView(views.APIView):
+    def post(self, request):
+        phone = request.data.get('phone')
+        password = request.data.get('password')
+        try:
+            user = User.objects.get(phone=phone, is_verified=True)
+            user.set_password(password)
+            return Response({'message': 'Password set. Registration complete.'})
+        except User.DoesNotExist:
+            return Response({'error': 'User not found or not verified'}, status=404)
+
+class VerifyPasswordView(views.APIView):
+    def post(self, request):
+        serializer = UserPasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            phone = serializer.validated_data['phone']
+            password = serializer.validated_data['password']
+            try:
+                user = User.objects.get(phone=phone)
+                if user.check_password(password):
+                    return Response({'message': 'Password verified', 'user': UserSerializer(user).data})
+                return Response({'error': 'Invalid password'}, status=400)
+            except User.DoesNotExist:
+                return Response({'error': 'User not found'}, status=404)
+        return Response(serializer.errors, status=400)

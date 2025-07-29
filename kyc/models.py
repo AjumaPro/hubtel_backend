@@ -18,6 +18,12 @@ class KYCSubmission(models.Model):
     
     def __str__(self):
         return f"KYCSubmission(id={self.id}, user={self.user}, status={self.status}, submitted_at={self.submitted_at})"
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['status']),
+            models.Index(fields=['submitted_at']),
+        ]
 
 
 class ContactFormSubmission(models.Model):
@@ -30,3 +36,9 @@ class ContactFormSubmission(models.Model):
     
     def __str__(self):
         return f"Contact from {self.name} ({self.email}) - {self.submitted_at.strftime('%Y-%m-%d %H:%M')}"
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['submitted_at']),
+            models.Index(fields=['is_read']),
+        ]
